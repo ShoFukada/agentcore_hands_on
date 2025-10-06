@@ -1,0 +1,98 @@
+[project]
+name = "uv-python-starter-template"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "ShoFukada", email = "syo889472@gmail.com" }
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic-settings>=2.10.1",
+]
+
+[project.scripts]
+uv-python-starter-template = "uv_python_starter_template:main"
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+    "pyright>=1.1.405",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.13.0",
+]
+
+[tool.pyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.12"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+ignore = [
+    # Documentation
+    "D1",     # Missing docstrings
+    "D203",   # One blank line before class
+    "D213",   # Multi-line summary second line
+    "D400",   # First line should end with period
+    "D415",   # First line should end with punctuation
+
+    # Development
+    "TD",     # todo tags allowed
+    "T201",   # print() allowed for debugging
+
+    # Exception handling
+    "TRY003", # Long exception messages allowed
+    "EM101",  # Exception string literals allowed
+    "COM812", # Trailing comma missing (conflicts with formatter)
+]
+
+
+unfixable = [
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",    # assert allowed in tests
+    "PLR2004", # Magic values allowed in tests
+    "ANN",     # Type annotations optional in tests
+    "D",       # Docstrings optional in tests
+]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--strict-markers",
+    "--tb=short",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/__init__.py"]
+relative_files = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+skip_covered = false
