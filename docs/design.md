@@ -42,8 +42,10 @@ graph TB
             Role[AgentRuntimeRole<br/>実行権限]
         end
 
-        subgraph "Monitoring"
+        subgraph "Observability"
+            XRay[AWS X-Ray<br/>分散トレーシング]
             CW[CloudWatch Logs<br/>ログ収集]
+            TxSearch[Transaction Search<br/>スパン検索]
             Metrics[OpenTelemetry<br/>メトリクス]
         end
 
@@ -70,8 +72,11 @@ graph TB
     KB -->|Embedding取得| RDS
     S3 -->|ドキュメント| KB
     KB -->|Embedding保存| RDS
+    Runtime -->|トレース送信| XRay
     Runtime -->|ログ出力| CW
     Runtime -->|メトリクス送信| Metrics
+    XRay -->|スパン転送| CW
+    CW -->|インデックス化| TxSearch
 
     VPC -.->|Private接続| Runtime
     Subnet -.->|配置| Runtime
@@ -178,108 +183,32 @@ graph LR
   5. クエリ時はRDSでベクトル検索
 - **アクセス**: エージェントから直接クエリ
 
-## 4. デプロイ要件
-
-### 4.1 必須リソース
-1. **IAMロール** (AgentRuntimeRole)
-2. **ECRリポジトリ** (ARM64アーキテクチャ)
-3. **Agent Runtime** (create_agent_runtime API)
-4. **RDS for PostgreSQL** (pgvector拡張有効化)
-5. **S3バケット** (Knowledge Baseドキュメント保存)
-6. **ネットワーク設定** (PRIVATEの場合):
-   - VPC
-   - サブネット（RDS用とRuntime用）
-   - セキュリティグループ
-   - VPCエンドポイント（Bedrock用）
-
-### 4.2 外部サービス
-- **Tavily API**: Web検索機能（Gateway経由）
-- **Amazon Bedrock**: LLMモデル
-- **Amazon S3**: Knowledge Baseドキュメント保存
-
-## 5. データフロー
-
-### 5.1 基本フロー
+### 3.7 Observability
+- **トレーシング**: AWS X-Ray による分散トレーシング
+- **ログ収集**: CloudWatch Logs
+- **スパン収集**: CloudWatch Transaction Search
+- **メトリクス**: OpenTelemetry
+- **可視化機能**:
+  - エージェント実行フローの追跡
+  - ツール呼び出しのトレース
+  - LLM推論リクエスト/レスポンスの記録
+  - パフォーマンスボトルネックの特定
+  - エラー発生箇所の特定
+- **設定要件**:
+  - X-Ray トレースセグメント送信先を CloudWatch Logs に設定
+  - CloudWatch Logs リソースポリシーで X-Ray からのアクセスを許可
+  - エージェント実行時に自動的にトレースデータ収集
+  - トレースサンプリング率の設定（オプション）
 
 ```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant Runtime as Agent Runtime
-    participant LLM as Bedrock LLM
-    participant Tool as ツール<br/>(Memory/Code/Browser/Gateway/KB)
+graph LR
+    Runtime[Agent Runtime]
+    XRay[AWS X-Ray]
+    CWLogs[CloudWatch Logs]
+    TxSearch[Transaction Search]
 
-    User->>Runtime: リクエスト
-    Runtime->>LLM: プロンプト送信
-    LLM->>Runtime: ツール選択指示
-    Runtime->>Tool: ツール実行
-    Tool->>Runtime: 実行結果
-    Runtime->>LLM: 結果を含めて再送信
-    LLM->>Runtime: 最終レスポンス
-    Runtime->>User: レスポンス返却
+    Runtime -->|トレース送信| XRay
+    XRay -->|スパン転送| CWLogs
+    CWLogs -->|インデックス化| TxSearch
+    TxSearch -->|検索・分析| User[開発者]
 ```
-
-### 5.2 Web検索フロー
-
-```mermaid
-sequenceDiagram
-    participant Runtime as Agent Runtime
-    participant Gateway
-    participant Identity
-    participant Tavily as Tavily API
-
-    Runtime->>Gateway: 検索リクエスト<br/>(インバウンド認証)
-    Gateway->>Identity: 認証情報取得
-    Identity->>Gateway: APIキー返却
-    Gateway->>Tavily: 検索実行<br/>(アウトバウンド認証)
-    Tavily->>Gateway: 検索結果
-    Gateway->>Runtime: 結果返却
-```
-
-### 5.3 RAGフロー（セットアップ）
-
-```mermaid
-sequenceDiagram
-    participant Admin as 管理者
-    participant S3
-    participant KB as Knowledge Base
-    participant Bedrock as Bedrock Embedding
-    participant RDS as RDS (pgvector)
-
-    Admin->>S3: ドキュメントアップロード
-    S3->>KB: 同期トリガー
-    KB->>S3: ドキュメント読取
-    KB->>KB: チャンク化
-    KB->>Bedrock: Embedding生成リクエスト
-    Bedrock->>KB: Embeddingベクトル
-    KB->>RDS: ベクトル保存
-```
-
-### 5.4 RAGフロー（検索時）
-
-```mermaid
-sequenceDiagram
-    participant Runtime as Agent Runtime
-    participant KB as Knowledge Base
-    participant Bedrock as Bedrock Embedding
-    participant RDS as RDS (pgvector)
-
-    Runtime->>KB: クエリ送信
-    KB->>Bedrock: クエリのEmbedding生成
-    Bedrock->>KB: クエリベクトル
-    KB->>RDS: ベクトル類似度検索
-    RDS->>KB: 関連チャンク
-    KB->>Runtime: コンテキスト拡張された結果
-```
-
-## 6. セキュリティ
-
-- **コード実行**: サンドボックス隔離
-- **認証情報**: Identity（Secrets Manager相当）で管理
-- **ネットワーク**: VPC内プライベート通信（オプション）
-- **IAM**: 最小権限の原則
-
-## 7. モニタリング
-
-- **ログ**: CloudWatch Logs
-- **トレース**: OpenTelemetry対応
-- **メトリクス**: エージェント実行状況の可視化

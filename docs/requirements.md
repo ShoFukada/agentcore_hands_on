@@ -29,6 +29,14 @@
 - Web リサーチ機能を有効化
 - OAuth2/API キー認証のサポート
 
+### Observability
+- AWS X-Ray による分散トレーシング
+- CloudWatch Transaction Search でのスパン収集とインデックス化
+- CloudWatch Logs へのトレースデータ自動送信
+- エージェント実行フローの可視化とデバッグ
+- パフォーマンスメトリクスの監視
+- エラートレースとボトルネック分析
+
 
 ## 検討要件
 ### RAG (Retrieval-Augmented Generation)
