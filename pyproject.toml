@@ -1,5 +1,5 @@
 [project]
-name = "uv-python-starter-template"
+name = "agentcore_hands_on"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-uv-python-starter-template = "uv_python_starter_template:main"
+agentcore_hands_on = "agentcore_hands_on:main"
 
 [build-system]
 requires = ["uv_build>=0.8.15,<0.9.0"]
