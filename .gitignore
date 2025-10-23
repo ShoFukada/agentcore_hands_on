@@ -270,3 +270,5 @@ config.ini
 
 memo.md
 docs/memo/
+
+docs/terraform_docs/

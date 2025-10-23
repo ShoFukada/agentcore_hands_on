@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.pre-commit-config.yaml
+
+# Infrastructure
+infrastructure/
+scripts/
+
+# Serena
+.serena/
+
+# Ruff
+.ruff_cache/
+
+# Environment files
+.env
+.env.*
+!.env.sample
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Misc
+memo.md

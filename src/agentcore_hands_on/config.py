@@ -23,7 +23,8 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
 
-    OPENAI_API_KEY: str | None = None
+    ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
 
     def __init__(self, **data: Any) -> None:  # noqa: ANN401
         super().__init__(**data)
