@@ -2,7 +2,7 @@
 
 import pytest
 
-from uv_python_starter_template.calculator import Calculator, add, divide
+from agentcore_hands_on.calculator import Calculator, add, divide
 
 
 def test_add() -> None:
