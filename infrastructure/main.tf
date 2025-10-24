@@ -81,8 +81,30 @@ module "agent_runtime" {
   container_uri      = var.container_image_uri != "" ? var.container_image_uri : "${module.ecr.repository_url}:${var.image_tag}"
 
   environment_variables = {
+    # 既存の環境変数
     LOG_LEVEL   = var.log_level
     ENVIRONMENT = var.environment
+
+    # AgentCore Observability設定
+    AGENT_OBSERVABILITY_ENABLED = "true"
+
+    # OpenTelemetry基本設定
+    OTEL_PYTHON_DISTRO       = "aws_distro"
+    OTEL_PYTHON_CONFIGURATOR = "aws_configurator"
+
+    # リソース属性（サービス名、ロググループ、リソースID）
+    # runtime_idはtfvarsから取得（2段階デプロイ後）
+    OTEL_RESOURCE_ATTRIBUTES = var.agent_runtime_id != "" ? "service.name=${var.agent_name},aws.log.group.names=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id},cloud.resource_id=${var.agent_runtime_id}" : "service.name=${var.agent_name}"
+
+    # OTLPエクスポーター設定（ロググループ、ログストリーム、メトリクスネームスペース）
+    OTEL_EXPORTER_OTLP_LOGS_HEADERS = var.agent_runtime_id != "" ? "x-aws-log-group=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id},x-aws-log-stream=runtime-logs,x-aws-metric-namespace=bedrock-agentcore" : "x-aws-metric-namespace=bedrock-agentcore"
+
+    # プロトコルとエクスポーター設定
+    OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+    OTEL_TRACES_EXPORTER        = "otlp"
+
+    # サンプリング設定（開発環境なので100%）
+    OTEL_TRACES_SAMPLER = "always_on"
   }
 
   network_mode    = "PUBLIC"

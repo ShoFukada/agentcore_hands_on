@@ -41,3 +41,9 @@ variable "image_tag" {
   type        = string
   default     = "v1.0.0"
 }
+
+variable "agent_runtime_id" {
+  description = "Agent Runtime ID (required for Observability configuration after initial deployment)"
+  type        = string
+  default     = ""
+}

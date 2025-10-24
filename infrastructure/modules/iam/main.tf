@@ -44,18 +44,45 @@ data "aws_iam_policy_document" "agent_runtime_permissions" {
     resources = var.ecr_repository_arns
   }
 
-  # CloudWatch Logs permissions
+  # CloudWatch Logs permissions (including Observability)
   statement {
     sid    = "CloudWatchLogs"
     effect = "Allow"
     actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
-      "logs:PutLogEvents"
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams"
     ]
     resources = [
       "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/*"
     ]
+  }
+
+  # X-Ray permissions for Observability
+  statement {
+    sid    = "XRayAccess"
+    effect = "Allow"
+    actions = [
+      "xray:PutTraceSegments",
+      "xray:PutTelemetryRecords"
+    ]
+    resources = ["*"]
+  }
+
+  # CloudWatch Metrics for Observability
+  statement {
+    sid    = "CloudWatchMetrics"
+    effect = "Allow"
+    actions = [
+      "cloudwatch:PutMetricData"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "cloudwatch:namespace"
+      values   = ["bedrock-agentcore"]
+    }
   }
 
   # Bedrock model invocation permissions
