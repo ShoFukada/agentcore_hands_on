@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     AWS_REGION: str = "us-east-1"
     CODE_INTERPRETER_ID: str = ""
+    BROWSER_ID: str = ""
 
     def __init__(self, **data: Any) -> None:  # noqa: ANN401
         super().__init__(**data)

@@ -46,6 +46,9 @@ locals {
   code_interpreter_name   = replace("${var.project_name}_${var.agent_name}_code_interpreter", "-", "_")
   code_interpreter_role   = "${var.project_name}-code-interpreter-role"
   code_interpreter_policy = "${var.project_name}-code-interpreter-policy"
+  browser_name            = replace("${var.project_name}_${var.agent_name}_browser", "-", "_")
+  browser_role            = "${var.project_name}-browser-role"
+  browser_policy          = "${var.project_name}-browser-policy"
 }
 
 # ECR Module
@@ -77,6 +80,11 @@ module "iam" {
   code_interpreter_role_name   = local.code_interpreter_role
   code_interpreter_policy_name = local.code_interpreter_policy
 
+  # Browser IAM Role
+  create_browser_role = true
+  browser_role_name   = local.browser_role
+  browser_policy_name = local.browser_policy
+
   tags = local.common_tags
 }
 
@@ -96,6 +104,9 @@ module "agent_runtime" {
 
     # Code Interpreter ID
     CODE_INTERPRETER_ID = module.code_interpreter.code_interpreter_id
+
+    # Browser ID
+    BROWSER_ID = module.browser.browser_id
 
     # AgentCore Observability設定
     AGENT_OBSERVABILITY_ENABLED = "true"
@@ -137,6 +148,18 @@ module "code_interpreter" {
   description        = "Code interpreter for ${var.agent_name} with sandboxed Python execution"
   execution_role_arn = module.iam.code_interpreter_role_arn
   network_mode       = "SANDBOX"
+
+  tags = local.common_tags
+}
+
+# Browser Module
+module "browser" {
+  source = "./modules/browser"
+
+  name               = local.browser_name
+  description        = "Browser for ${var.agent_name} with web browsing capabilities"
+  execution_role_arn = module.iam.browser_role_arn
+  network_mode       = "PUBLIC"
 
   tags = local.common_tags
 }

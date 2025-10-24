@@ -32,3 +32,18 @@ output "code_interpreter_role_name" {
   description = "Name of the IAM role for code interpreter"
   value       = var.create_code_interpreter_role ? aws_iam_role.code_interpreter[0].name : null
 }
+
+output "browser_role_arn" {
+  description = "ARN of the IAM role for browser"
+  value       = var.create_browser_role ? aws_iam_role.browser[0].arn : null
+}
+
+output "browser_role_id" {
+  description = "ID of the IAM role for browser"
+  value       = var.create_browser_role ? aws_iam_role.browser[0].id : null
+}
+
+output "browser_role_name" {
+  description = "Name of the IAM role for browser"
+  value       = var.create_browser_role ? aws_iam_role.browser[0].name : null
+}

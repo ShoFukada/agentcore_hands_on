@@ -59,3 +59,21 @@ variable "code_interpreter_policy_name" {
   type        = string
   default     = ""
 }
+
+variable "create_browser_role" {
+  description = "Whether to create a separate IAM role for browser"
+  type        = bool
+  default     = true
+}
+
+variable "browser_role_name" {
+  description = "Name of the IAM role for browser"
+  type        = string
+  default     = ""
+}
+
+variable "browser_policy_name" {
+  description = "Name of the IAM policy for browser"
+  type        = string
+  default     = ""
+}

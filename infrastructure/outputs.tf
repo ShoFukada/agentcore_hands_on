@@ -84,6 +84,27 @@ output "code_interpreter_name" {
   value       = module.code_interpreter.name
 }
 
+# Browser outputs
+output "browser_id" {
+  description = "Browser ID"
+  value       = module.browser.browser_id
+}
+
+output "browser_arn" {
+  description = "Browser ARN"
+  value       = module.browser.browser_arn
+}
+
+output "browser_name" {
+  description = "Browser name"
+  value       = module.browser.browser_name
+}
+
+output "browser_role_arn" {
+  description = "IAM role ARN for browser"
+  value       = module.iam.browser_role_arn
+}
+
 # Instructions for next steps
 output "next_steps" {
   description = "Instructions for deploying your agent"

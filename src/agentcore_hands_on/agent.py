@@ -7,8 +7,10 @@ import json
 import logging
 import sys
 
+from bedrock_agentcore.tools.browser_client import BrowserClient
 from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 from fastapi import FastAPI
+from playwright.sync_api import sync_playwright
 from pydantic import BaseModel
 from strands import Agent, tool
 from strands.models.bedrock import BedrockModel
@@ -93,13 +95,80 @@ def execute_python(code: str, description: str = "") -> str:
         return json.dumps({"error": error_msg}, ensure_ascii=False)
 
 
-# Strands Agent の初期化 (Code Interpreterツール付き)
+@tool
+def browse_web(url: str) -> str:
+    """Browse the web and get page information.
+
+    Access a URL and retrieve the page title and text content.
+
+    Args:
+        url: The URL to visit. Must be a valid HTTP/HTTPS URL.
+
+    Returns:
+        str: The page information as a JSON string containing title and text content,
+             or an error message if the action fails.
+
+    Example:
+        browse_web("https://example.com")
+
+    """
+    try:
+        # BrowserClientを使用してカスタムBrowserに接続
+        client = BrowserClient(region=settings.AWS_REGION)
+
+        # カスタムBrowserでセッション開始
+        session_id = client.start(identifier=settings.BROWSER_ID)
+        logger.info("Browser session started: %s", session_id)
+
+        try:
+            # WebSocket接続情報を取得
+            ws_url, headers = client.generate_ws_headers()
+
+            # Playwrightで接続
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.connect_over_cdp(
+                    endpoint_url=ws_url,
+                    headers=headers,
+                )
+
+                try:
+                    page = browser.new_page()
+                    logger.info("Navigating to: %s", url)
+                    page.goto(url, wait_until="domcontentloaded")
+
+                    # ページ情報を取得
+                    title = page.title()
+                    text_content = page.inner_text("body")
+
+                    result = {
+                        "url": url,
+                        "title": title,
+                        "content": text_content,
+                    }
+
+                    return json.dumps(result, ensure_ascii=False)
+
+                finally:
+                    browser.close()
+
+        finally:
+            # セッション停止
+            client.stop()
+            logger.info("Browser session stopped")
+
+    except Exception as e:
+        error_msg = f"Browser action failed: {e!s}"
+        logger.exception(error_msg)
+        return json.dumps({"error": error_msg}, ensure_ascii=False)
+
+
+# Strands Agent の初期化 (Code Interpreter + Browserツール付き)
 agent = Agent(
     model=BedrockModel(
         model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         region_name=settings.AWS_REGION,
     ),
-    tools=[execute_python],
+    tools=[execute_python, browse_web],
 )
 
 
@@ -128,7 +197,7 @@ def health_check() -> dict[str, str]:
 def invoke(request: InvocationRequest) -> InvocationResponse:
     """メインの呼び出しエンドポイント - Strands Agent を使用
 
-    Code Interpreterツールを統合したAIエージェントとして動作します。
+    Code Interpreter と Browser ツールを統合したAIエージェントとして動作します。
     """
     prompt = request.input.get("prompt", "")
     logger.info("リクエストを受信: prompt=%s, session_id=%s", prompt, request.session_id)
