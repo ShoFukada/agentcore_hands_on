@@ -78,7 +78,7 @@ module "agent_runtime" {
   agent_runtime_name = local.agent_runtime_name
   description        = "Agent runtime for ${var.agent_name}"
   role_arn           = module.iam.role_arn
-  container_uri      = var.container_image_uri != "" ? var.container_image_uri : "${module.ecr.repository_url}:latest"
+  container_uri      = var.container_image_uri != "" ? var.container_image_uri : "${module.ecr.repository_url}:${var.image_tag}"
 
   environment_variables = {
     LOG_LEVEL   = var.log_level
@@ -88,9 +88,9 @@ module "agent_runtime" {
   network_mode    = "PUBLIC"
   server_protocol = "HTTP"
 
-  create_endpoint      = true
-  endpoint_name        = local.endpoint_name
-  endpoint_description = "Endpoint for ${var.agent_name}"
+  create_endpoint      = false
+  endpoint_name        = ""
+  endpoint_description = ""
 
   tags = local.common_tags
 }

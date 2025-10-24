@@ -35,3 +35,9 @@ variable "log_level" {
   type        = string
   default     = "INFO"
 }
+
+variable "image_tag" {
+  description = "Container image tag (version)"
+  type        = string
+  default     = "v1.0.0"
+}

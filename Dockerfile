@@ -45,4 +45,5 @@ ENV PATH="/app/.venv/bin:$PATH" \
 EXPOSE 8080
 
 # アプリケーションの起動
-CMD ["uvicorn", "agentcore_hands_on.agent:app", "--host", "0.0.0.0", "--port", "8080"]
+# opentelemetry-instrument で起動して CloudWatch Logs にログを送信
+CMD ["opentelemetry-instrument", "uvicorn", "agentcore_hands_on.agent:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]

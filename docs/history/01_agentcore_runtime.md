@@ -37,12 +37,13 @@ cd ..  # プロジェクトルートへ
 ECR_URL=$(cd infrastructure && terraform output -raw ecr_repository_url)
 
 # Docker イメージをビルド & プッシュ
-./scripts/build_and_push.sh ${ECR_URL} latest
+./scripts/build_and_push.sh ${ECR_URL} v1.0.0
 ```
 
 ### 3. Agent Runtime と Endpoint を作成
 
 Docker イメージが ECR にプッシュされたら、Agent Runtime と Endpoint を作成します。
+なお今回はcreate endpointをfalseにしており、defaultのエンドポイントのみ自動で作成されます
 
 ```bash
 cd infrastructure
@@ -135,5 +136,67 @@ uv run python src/agentcore_hands_on/invoke_agent.py \
   },
   "sessionId": "session_abc123..."
 }
+```
+
+# エージェントの更新手順
+
+## 概要
+
+エージェントのコードを修正した後、Agent Runtime を更新する方法を説明します。
+
+## 重要：バージョン管理方式
+
+このプロジェクトでは**バージョンタグ方式**を採用しています。これにより：
+- ✅ Runtime ID が変わらない（ロググループも維持される）
+- ✅ バージョン履歴が管理できる
+- ✅ ロールバックが簡単
+
+## 更新手順
+
+### 1. エージェントコードを修正
+
+`src/agentcore_hands_on/agent.py` などを修正します。
+
+### 2. 新しいバージョンでイメージをビルド＆プッシュ
+
+```bash
+export AWS_PROFILE=your-aws-profile
+
+# バージョン番号を上げてビルド（例：v1.0.0 → v1.0.1）
+cd infrastructure
+../scripts/build_and_push.sh $(terraform output -raw ecr_repository_url) v1.0.1
+```
+
+### 3. terraform.tfvars のバージョンを更新
+
+`infrastructure/terraform.tfvars` を編集：
+
+```hcl
+image_tag = "v1.0.1"  # 新しいバージョンに更新
+```
+
+### 4. Terraform で更新を適用
+
+```bash
+cd infrastructure
+terraform apply
+```
+
+**結果**：
+- Runtime ID は変わらず、新しいバージョン（v3, v4...）が自動的に作成されます
+- CloudWatch Logs のロググループも維持されます
+
+
+### Q: ロールバックしたい
+
+A: `terraform.tfvars` の `image_tag` を以前のバージョンに戻して `terraform apply` するだけです。
+
+```hcl
+# v1.0.2 → v1.0.1 に戻す
+image_tag = "v1.0.1"
+```
+
+```bash
+terraform apply
 ```
 

@@ -47,11 +47,6 @@ output "agent_runtime_version" {
   value       = module.agent_runtime.agent_runtime_version
 }
 
-output "agent_runtime_endpoint_arn" {
-  description = "Agent Runtime Endpoint ARN"
-  value       = module.agent_runtime.endpoint_arn
-}
-
 output "workload_identity_arn" {
   description = "Workload Identity ARN"
   value       = module.agent_runtime.workload_identity_arn
