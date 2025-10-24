@@ -12,6 +12,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aws-opentelemetry-distro" },
+    { name = "bedrock-agentcore" },
     { name = "boto3" },
     { name = "fastapi" },
     { name = "pydantic-settings" },
@@ -32,6 +33,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aws-opentelemetry-distro", specifier = ">=0.10.0" },
+    { name = "bedrock-agentcore", specifier = ">=1.0.4" },
     { name = "boto3" },
     { name = "fastapi", specifier = ">=0.119.1" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
@@ -154,6 +156,24 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c0/41/58dddd72c7503facf5d313780ae107cfb7db2f69107e5754026390f55470/aws_opentelemetry_distro-0.12.1-py3-none-any.whl", hash = "sha256:529e7879c25546fb2d8015f73a1e41b48ddd98eb5dfc49caefde4a809f7c0ad0", size = 104546, upload-time = "2025-09-16T17:14:54.778Z" },
+]
+
+[[package]]
+name = "bedrock-agentcore"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "boto3" },
+    { name = "botocore" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "urllib3" },
+    { name = "uvicorn" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/87/2a/db720b3334664d29b29ae54c799f04334a1df0d876dc0d75c8c9a060f724/bedrock_agentcore-1.0.4.tar.gz", hash = "sha256:6a89272dff24e4958f4c6d694349e3356a313efad52c291de0df75cfe407ea0a", size = 269003, upload-time = "2025-10-22T19:31:04.327Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/82/b76dcaa63f3d9bccf645de19182b5783704b9e0260702d4b6a48183cb066/bedrock_agentcore-1.0.4-py3-none-any.whl", hash = "sha256:bb46ccaff2f286e428d3c83bda180f8ffad8e1a53cf5e4d0ece9c71fa03babe7", size = 80217, upload-time = "2025-10-22T19:31:02.781Z" },
 ]
 
 [[package]]

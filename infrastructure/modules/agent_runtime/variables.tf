@@ -60,3 +60,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "code_interpreter_id" {
+  description = "Code Interpreter ID to set as environment variable"
+  type        = string
+  default     = ""
+}

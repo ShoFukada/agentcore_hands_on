@@ -99,6 +99,18 @@ data "aws_iam_policy_document" "agent_runtime_permissions" {
     }
   }
 
+  # Bedrock AgentCore Code Interpreter permissions
+  statement {
+    sid    = "BedrockAgentCoreCodeInterpreter"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:StartCodeInterpreterSession",
+      "bedrock-agentcore:StopCodeInterpreterSession",
+      "bedrock-agentcore:InvokeCodeInterpreter"
+    ]
+    resources = ["*"]
+  }
+
   # Additional custom policy statements
   dynamic "statement" {
     for_each = var.additional_policy_statements
@@ -122,4 +134,87 @@ resource "aws_iam_role_policy" "agent_runtime" {
   name   = var.policy_name
   role   = aws_iam_role.agent_runtime.id
   policy = data.aws_iam_policy_document.agent_runtime_permissions.json
+}
+
+# Code Interpreter IAM Role
+data "aws_iam_policy_document" "code_interpreter_assume_role" {
+  count = var.create_code_interpreter_role ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["bedrock-agentcore.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "code_interpreter_permissions" {
+  count = var.create_code_interpreter_role ? 1 : 0
+
+  # CloudWatch Logs permissions for code interpreter execution logs
+  statement {
+    sid    = "CloudWatchLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/code-interpreter/*"
+    ]
+  }
+
+  # S3 permissions for file processing
+  statement {
+    sid    = "S3Access"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:s3:::*"
+    ]
+  }
+
+  # S3 List Buckets permission
+  statement {
+    sid    = "S3ListBuckets"
+    effect = "Allow"
+    actions = [
+      "s3:ListAllMyBuckets",
+      "s3:GetBucketLocation"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role" "code_interpreter" {
+  count = var.create_code_interpreter_role ? 1 : 0
+
+  name               = var.code_interpreter_role_name
+  assume_role_policy = data.aws_iam_policy_document.code_interpreter_assume_role[0].json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy" "code_interpreter" {
+  count = var.create_code_interpreter_role ? 1 : 0
+
+  name   = var.code_interpreter_policy_name
+  role   = aws_iam_role.code_interpreter[0].id
+  policy = data.aws_iam_policy_document.code_interpreter_permissions[0].json
 }

@@ -3,13 +3,17 @@
 /ping と /invocations エンドポイントを実装
 """
 
+import json
 import logging
 import sys
 
+from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 from fastapi import FastAPI
 from pydantic import BaseModel
-from strands import Agent
+from strands import Agent, tool
 from strands.models.bedrock import BedrockModel
+
+from agentcore_hands_on.config import Settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,14 +22,84 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# 設定の読み込み
+settings = Settings()
+
 app = FastAPI(title="Strands Agent Runtime")
 
-# Strands Agent の初期化
+
+@tool
+def execute_python(code: str, description: str = "") -> str:
+    r"""Execute Python code in a sandboxed Code Interpreter environment.
+
+    This tool allows you to run Python code safely for data analysis, calculations,
+    and file processing tasks. The code runs in an isolated sandbox environment.
+
+    Args:
+        code: The Python code to execute. Should be valid Python syntax.
+        description: Optional description of what the code does. Will be added as a comment.
+
+    Returns:
+        str: The execution result as a JSON string containing the output,
+             or an error message if execution fails.
+
+    Example:
+        execute_python("print('Hello, World!')", "Simple greeting")
+        execute_python("result = 2 + 2\nprint(result)", "Basic calculation")
+
+    """
+    try:
+        # Add description as comment if provided
+        if description:
+            code = f"# {description}\n{code}"
+
+        # code_sessionではデフォルトのinterpreterしか使えないため、
+        # CodeInterpreterクラスを直接使用してカスタムidentifierを指定
+        client = CodeInterpreter(region=settings.AWS_REGION)
+
+        # カスタムCode Interpreterでセッション開始
+        session_id = client.start(identifier=settings.CODE_INTERPRETER_ID)
+        logger.info("Code Interpreter session started: %s", session_id)
+
+        try:
+            # コード実行
+            response = client.invoke(
+                "executeCode",
+                {"code": code, "language": "python", "clearContext": False},
+            )
+
+            # ストリーミングレスポンスの処理
+            result_text = ""
+            for event in response["stream"]:
+                logger.debug("Code execution event: %s", event)
+
+                if "result" in event:
+                    result_text = json.dumps(event["result"], ensure_ascii=False)
+                elif "stdout" in event:
+                    result_text = event["stdout"]
+                elif "structuredContent" in event:
+                    result_text = json.dumps(event["structuredContent"], ensure_ascii=False)
+
+            return result_text if result_text else "実行完了(出力なし)"
+
+        finally:
+            # セッション停止
+            client.stop()
+            logger.info("Code Interpreter session stopped")
+
+    except Exception as e:
+        error_msg = f"Code execution failed: {e!s}"
+        logger.exception(error_msg)
+        return json.dumps({"error": error_msg}, ensure_ascii=False)
+
+
+# Strands Agent の初期化 (Code Interpreterツール付き)
 agent = Agent(
     model=BedrockModel(
         model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-        region_name="us-east-1",
+        region_name=settings.AWS_REGION,
     ),
+    tools=[execute_python],
 )
 
 
@@ -52,7 +126,10 @@ def health_check() -> dict[str, str]:
 
 @app.post("/invocations")
 def invoke(request: InvocationRequest) -> InvocationResponse:
-    """メインの呼び出しエンドポイント - Strands Agent を使用"""
+    """メインの呼び出しエンドポイント - Strands Agent を使用
+
+    Code Interpreterツールを統合したAIエージェントとして動作します。
+    """
     prompt = request.input.get("prompt", "")
     logger.info("リクエストを受信: prompt=%s, session_id=%s", prompt, request.session_id)
 

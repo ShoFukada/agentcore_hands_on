@@ -11,7 +11,12 @@ resource "aws_bedrockagentcore_agent_runtime" "main" {
     }
   }
 
-  environment_variables = var.environment_variables
+  environment_variables = merge(
+    var.environment_variables,
+    var.code_interpreter_id != "" ? {
+      CODE_INTERPRETER_ID = var.code_interpreter_id
+    } : {}
+  )
 
   network_configuration {
     network_mode = var.network_mode

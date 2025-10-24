@@ -41,3 +41,21 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "create_code_interpreter_role" {
+  description = "Whether to create a separate IAM role for code interpreter"
+  type        = bool
+  default     = true
+}
+
+variable "code_interpreter_role_name" {
+  description = "Name of the IAM role for code interpreter"
+  type        = string
+  default     = ""
+}
+
+variable "code_interpreter_policy_name" {
+  description = "Name of the IAM policy for code interpreter"
+  type        = string
+  default     = ""
+}

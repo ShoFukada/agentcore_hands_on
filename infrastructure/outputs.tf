@@ -63,6 +63,27 @@ output "agent_runtime_role_name" {
   value       = module.iam.role_name
 }
 
+output "code_interpreter_role_arn" {
+  description = "IAM role ARN for code interpreter"
+  value       = module.iam.code_interpreter_role_arn
+}
+
+# Code Interpreter outputs
+output "code_interpreter_id" {
+  description = "Code Interpreter ID"
+  value       = module.code_interpreter.code_interpreter_id
+}
+
+output "code_interpreter_arn" {
+  description = "Code Interpreter ARN"
+  value       = module.code_interpreter.code_interpreter_arn
+}
+
+output "code_interpreter_name" {
+  description = "Code Interpreter name"
+  value       = module.code_interpreter.name
+}
+
 # Instructions for next steps
 output "next_steps" {
   description = "Instructions for deploying your agent"

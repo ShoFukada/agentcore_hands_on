@@ -41,8 +41,11 @@ locals {
   }
 
   # Agent Runtime名とEndpoint名はアンダースコアのみ使用可能（ハイフン不可）
-  agent_runtime_name = replace("${var.project_name}_${var.agent_name}_runtime", "-", "_")
-  endpoint_name      = replace("${var.project_name}_${var.agent_name}_endpoint", "-", "_")
+  agent_runtime_name      = replace("${var.project_name}_${var.agent_name}_runtime", "-", "_")
+  endpoint_name           = replace("${var.project_name}_${var.agent_name}_endpoint", "-", "_")
+  code_interpreter_name   = replace("${var.project_name}_${var.agent_name}_code_interpreter", "-", "_")
+  code_interpreter_role   = "${var.project_name}-code-interpreter-role"
+  code_interpreter_policy = "${var.project_name}-code-interpreter-policy"
 }
 
 # ECR Module
@@ -65,8 +68,14 @@ module "iam" {
   ecr_repository_arns   = [module.ecr.repository_arn]
   enable_bedrock_invoke = true
   bedrock_model_arns = [
-    "arn:${data.aws_partition.current.partition}:bedrock:${data.aws_region.current.id}::foundation-model/*"
+    "arn:${data.aws_partition.current.partition}:bedrock:*::foundation-model/*",
+    "arn:${data.aws_partition.current.partition}:bedrock:*:*:inference-profile/*"
   ]
+
+  # Code Interpreter IAM Role
+  create_code_interpreter_role = true
+  code_interpreter_role_name   = local.code_interpreter_role
+  code_interpreter_policy_name = local.code_interpreter_policy
 
   tags = local.common_tags
 }
@@ -84,6 +93,9 @@ module "agent_runtime" {
     # 既存の環境変数
     LOG_LEVEL   = var.log_level
     ENVIRONMENT = var.environment
+
+    # Code Interpreter ID
+    CODE_INTERPRETER_ID = module.code_interpreter.code_interpreter_id
 
     # AgentCore Observability設定
     AGENT_OBSERVABILITY_ENABLED = "true"
@@ -113,6 +125,18 @@ module "agent_runtime" {
   create_endpoint      = false
   endpoint_name        = ""
   endpoint_description = ""
+
+  tags = local.common_tags
+}
+
+# Code Interpreter Module
+module "code_interpreter" {
+  source = "./modules/code_interpreter"
+
+  name               = local.code_interpreter_name
+  description        = "Code interpreter for ${var.agent_name} with sandboxed Python execution"
+  execution_role_arn = module.iam.code_interpreter_role_arn
+  network_mode       = "SANDBOX"
 
   tags = local.common_tags
 }
