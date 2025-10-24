@@ -1,30 +1,39 @@
-# uv-python-starter-template
+# AgentCore Hands-on
 
-A modern Python project template using uv package manager with development best practices.
+AWS Bedrock AgentCore Runtime with Strands and OpenTelemetry.
 
 ## Overview
 
-This is a starter template for Python projects that includes:
-- Modern dependency management with uv
-- Pre-configured development tools (ruff, pyright, pytest)
-- Pydantic settings for configuration management
-- Pre-commit hooks for code quality
-- Testing setup with pytest and coverage
+This project demonstrates:
+- AWS Bedrock AgentCore Runtime deployment
+- Strands AI agent framework with OpenTelemetry support
+- Infrastructure as Code with Terraform
+- Observability with CloudWatch
 
-## Usage
+## Quick Start
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd uv-python-starter-template
-
 # Install dependencies
 uv sync
+```
 
-# Install development dependencies
-uv sync --dev
+### Local Testing
+
+Agent をローカルで実行してテストする:
+
+```bash
+# Agent サーバーを起動
+uv run uvicorn agentcore_hands_on.agent:app --host 0.0.0.0 --port 8080
+
+# 別のターミナルで動作確認
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"input": {"prompt": "Hello, Agent!"}, "session_id": "test-session"}'
+
+# ヘルスチェック
+curl http://localhost:8080/ping
 ```
 
 ### Development
@@ -41,12 +50,6 @@ uv run pyright
 
 # Format code
 uv run ruff format .
-```
-
-### Running the application
-
-```bash
-uv run uv-python-starter-template
 ```
 
 ## Project Structure

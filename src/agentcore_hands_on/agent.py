@@ -1,6 +1,6 @@
-"""超シンプルなAgent Runtime.
+"""Strands Agent Runtime with OpenTelemetry support.
 
-/ping と /invocations エンドポイントのみを実装
+/ping と /invocations エンドポイントを実装
 """
 
 import logging
@@ -8,6 +8,8 @@ import sys
 
 from fastapi import FastAPI
 from pydantic import BaseModel
+from strands import Agent
+from strands.models.bedrock import BedrockModel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,7 +18,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Simple Agent Runtime")
+app = FastAPI(title="Strands Agent Runtime")
+
+# Strands Agent の初期化
+agent = Agent(
+    model=BedrockModel(
+        model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+        region_name="us-east-1",
+    ),
+)
 
 
 class InvocationRequest(BaseModel):
@@ -42,15 +52,25 @@ def health_check() -> dict[str, str]:
 
 @app.post("/invocations")
 def invoke(request: InvocationRequest) -> InvocationResponse:
-    """メインの呼び出しエンドポイント"""
+    """メインの呼び出しエンドポイント - Strands Agent を使用"""
     prompt = request.input.get("prompt", "")
     logger.info("リクエストを受信: prompt=%s, session_id=%s", prompt, request.session_id)
 
-    # シンプルなエコーレスポンス
-    response_text = f"受信したメッセージ: {prompt}"
-    logger.info("レスポンスを生成: %s", response_text)
+    try:
+        # Strands Agent で処理
+        response = agent(prompt)
+        response_text = str(response)
 
-    return InvocationResponse(output={"response": response_text}, session_id=request.session_id)
+        return InvocationResponse(
+            output={"response": response_text},
+            session_id=request.session_id,
+        )
+    except Exception as e:
+        logger.exception("Agent 実行中にエラーが発生")
+        return InvocationResponse(
+            output={"response": f"エラーが発生しました: {e!s}"},
+            session_id=request.session_id,
+        )
 
 
 if __name__ == "__main__":

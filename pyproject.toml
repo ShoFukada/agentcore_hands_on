@@ -14,6 +14,7 @@ dependencies = [
     "fastapi>=0.119.1",
     "pydantic-settings>=2.10.1",
     "uvicorn>=0.38.0",
+    "strands-agents[otel]>=0.1.0",
 ]
 
 [project.scripts]
