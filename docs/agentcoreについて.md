@@ -128,6 +128,7 @@ graph LR
 **Terraformリソース:**
 - [API Key Credential Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrockagentcore_api_key_credential_provider) - APIキー認証用
 - OAuth2/Workload Providerは現時点では未提供の可能性あり
+  - terraform6.18.0で提供開始されてる。
 
 エージェントが外部サービスにアクセスする際の認証情報を安全に管理する仕組み。Secrets Managerのような感覚で、以下の認証方式をサポート:
 - **API Key**: APIキーベースの認証（Terraform対応済み）

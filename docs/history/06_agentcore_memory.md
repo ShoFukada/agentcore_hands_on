@@ -352,6 +352,100 @@ curl -X POST http://localhost:8080/invocations \
 
 ✅ **Memory統合成功**: エージェントが正しく会話履歴を記憶し、別のリクエストで名前を思い出すことができた。
 
+## 4. Invoke Agent Runtime でのテスト
+
+### スクリプト修正
+
+`src/agentcore_hands_on/invoke_agent.py`に`--session-id`と`--actor-id`のオプションを追加：
+
+```python
+parser.add_argument("--session-id", help="セッションID（指定しない場合は自動生成）")
+parser.add_argument("--actor-id", help="アクターID（Memory機能で使用）")
+
+# セッションID生成（指定がない場合のみ）
+if args.session_id:
+    session_id = args.session_id
+else:
+    session_id = f"dfmeoagmreaklgmrkleafremoigrmtesogmtrskhmtkrlshmt{uuid.uuid4().hex[:10]}"
+
+# ペイロード
+payload_data = {"input": {"prompt": args.prompt}}
+if args.actor_id:
+    payload_data["actorId"] = args.actor_id
+payload = json.dumps(payload_data)
+```
+
+### テスト1: 初回会話（名前と好きなものを記憶）
+
+```bash
+export AWS_PROFILE=239339588912_AdministratorAccess
+uv run python -m agentcore_hands_on.invoke_agent \
+  --runtime-arn "arn:aws:bedrock-agentcore:us-east-1:239339588912:runtime/agentcore_hands_on_my_agent_runtime-VNBQgh67mr" \
+  --prompt "My name is Alice and I love Python programming" \
+  --session-id "memory-test-session-001-xxxxxxxxx" \
+  --actor-id "user-alice"
+```
+
+**実行結果**:
+```json
+{
+  "output": {
+    "response": "That's great to know, Alice! Python is an excellent programming language with a lot to offer. It's widely used for:\n\n- **Data analysis and visualization**\n- **Web development**\n- **Machine learning and AI**\n- **Automation and scripting**\n- **Scientific computing**\n- **General-purpose programming**\n\nSince you love Python programming, you might find it useful that I can help you by:\n- Writing and executing Python code\n- Debugging or testing code snippets\n- Performing calculations and data analysis\n- Processing files\n- And much more!\n\nFeel free to share any Python code you'd like to work on or any problems you'd like to solve. I'm here to help! 🐍\n"
+  },
+  "session_id": null
+}
+```
+
+### テスト2: 同じセッションで記憶を確認
+
+```bash
+uv run python -m agentcore_hands_on.invoke_agent \
+  --runtime-arn "arn:aws:bedrock-agentcore:us-east-1:239339588912:runtime/agentcore_hands_on_my_agent_runtime-VNBQgh67mr" \
+  --prompt "What is my name?" \
+  --session-id "memory-test-session-001-xxxxxxxxx" \
+  --actor-id "user-alice"
+```
+
+**実行結果**:
+```json
+{
+  "output": {
+    "response": "Your name is Alice! 😊\n\nYou've told me that you're Alice and that you love Python programming.\n"
+  },
+  "session_id": null
+}
+```
+
+✅ **短期記憶成功**: 同じセッション内で名前と好みを正しく記憶している。
+
+### テスト3: Long-term Memory（異なるセッションIDで同じactor_id）
+
+```bash
+uv run python -m agentcore_hands_on.invoke_agent \
+  --runtime-arn "arn:aws:bedrock-agentcore:us-east-1:239339588912:runtime/agentcore_hands_on_my_agent_runtime-VNBQgh67mr" \
+  --prompt "Do you remember my name and what I like?" \
+  --session-id "memory-test-session-002-yyyyyyyyy" \
+  --actor-id "user-alice"
+```
+
+**実行結果**:
+```json
+{
+  "output": {
+    "response": "Yes, I do! 😊\n\n**Your name:** Alice\n\n**What you like:** Python programming\n\nYou shared both of these things with me at the beginning of our conversation, and I've retained that information throughout our chat.\n"
+  },
+  "session_id": null
+}
+```
+
+✅ **Long-term Memory成功**: 異なるセッションIDでも同じactor_idであれば、以前の会話内容を記憶している。
+
+### Memory動作の確認ポイント
+
+1. **Short-term Memory**: 同じsession_id内での会話履歴は即座に参照可能
+2. **Long-term Memory**: 異なるsession_idでも同じactor_idであれば、SEMANTIC/USER_PREFERENCE戦略により過去の情報を記憶
+3. **Memory Strategy**: 3つの戦略（SEMANTIC、SUMMARIZATION、USER_PREFERENCE）が自動的に動作し、重要な情報を抽出・保存
+
 ## まとめ
 
 - AgentCore Memoryリソースを3つの戦略（SEMANTIC、SUMMARIZATION、USER_PREFERENCE）で構築
@@ -359,6 +453,8 @@ curl -X POST http://localhost:8080/invocations \
 - Strands SDKの`AgentCoreMemorySessionManager`を使用して自動的に会話を永続化
 - session_id/actor_idでセッション管理を実装
 - v1.0.8でデプロイし、会話記憶機能の動作を確認
+- ローカルHTTPエンドポイントとInvoke Agent Runtime両方でMemory機能の動作を検証
+- Short-term Memory（同一セッション）とLong-term Memory（異なるセッション、同一アクター）の両方が正常に動作することを確認
 
 ## 参考ドキュメント
 
