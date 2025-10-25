@@ -7,6 +7,10 @@ import json
 import logging
 import sys
 
+from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
+from bedrock_agentcore.memory.integrations.strands.session_manager import (
+    AgentCoreMemorySessionManager,
+)
 from bedrock_agentcore.tools.browser_client import BrowserClient
 from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 from fastapi import FastAPI
@@ -162,14 +166,46 @@ def browse_web(url: str) -> str:
         return json.dumps({"error": error_msg}, ensure_ascii=False)
 
 
-# Strands Agent の初期化 (Code Interpreter + Browserツール付き)
-agent = Agent(
-    model=BedrockModel(
-        model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-        region_name=settings.AWS_REGION,
-    ),
-    tools=[execute_python, browse_web],
-)
+def create_agent(session_id: str | None = None, actor_id: str | None = None) -> Agent:
+    """Strands Agent を作成する(Memory統合対応)
+
+    Args:
+        session_id: セッションID(指定しない場合はデフォルト値を使用)
+        actor_id: アクターID(指定しない場合はデフォルト値を使用)
+
+    Returns:
+        Agent: 初期化されたStrands Agent
+
+    """
+    # MEMORY_IDが設定されている場合はSessionManagerを作成
+    session_manager = None
+    if settings.MEMORY_ID:
+        memory_config = AgentCoreMemoryConfig(
+            memory_id=settings.MEMORY_ID,
+            session_id=session_id or settings.DEFAULT_SESSION_ID,
+            actor_id=actor_id or settings.DEFAULT_ACTOR_ID,
+        )
+
+        session_manager = AgentCoreMemorySessionManager(
+            agentcore_memory_config=memory_config,
+            region_name=settings.AWS_REGION,
+        )
+        logger.info(
+            "Memory統合有効: memory_id=%s, session_id=%s, actor_id=%s",
+            settings.MEMORY_ID,
+            memory_config.session_id,
+            memory_config.actor_id,
+        )
+
+    # Strands Agent を作成
+    return Agent(
+        model=BedrockModel(
+            model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+            region_name=settings.AWS_REGION,
+        ),
+        tools=[execute_python, browse_web],
+        session_manager=session_manager,
+    )
 
 
 class InvocationRequest(BaseModel):
@@ -177,6 +213,7 @@ class InvocationRequest(BaseModel):
 
     input: dict
     session_id: str | None = None
+    actor_id: str | None = None
 
 
 class InvocationResponse(BaseModel):
@@ -198,13 +235,25 @@ def invoke(request: InvocationRequest) -> InvocationResponse:
     """メインの呼び出しエンドポイント - Strands Agent を使用
 
     Code Interpreter と Browser ツールを統合したAIエージェントとして動作します。
+    MEMORY_IDが設定されている場合、会話履歴が保存されます。
     """
     prompt = request.input.get("prompt", "")
-    logger.info("リクエストを受信: prompt=%s, session_id=%s", prompt, request.session_id)
+    logger.info(
+        "リクエストを受信: prompt=%s, session_id=%s, actor_id=%s",
+        prompt,
+        request.session_id,
+        request.actor_id,
+    )
 
     try:
+        # session_idとactor_idを使用してAgentを作成
+        current_agent = create_agent(
+            session_id=request.session_id,
+            actor_id=request.actor_id,
+        )
+
         # Strands Agent で処理
-        response = agent(prompt)
+        response = current_agent(prompt)
         response_text = str(response)
 
         return InvocationResponse(

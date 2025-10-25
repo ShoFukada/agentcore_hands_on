@@ -47,3 +47,28 @@ variable "agent_runtime_id" {
   type        = string
   default     = ""
 }
+
+# Memory configuration
+variable "memory_retention_days" {
+  description = "Number of days to retain memory events (Short-term memory retention)"
+  type        = number
+  default     = 90
+}
+
+variable "memory_enable_semantic" {
+  description = "Enable SEMANTIC memory strategy (knowledge extraction)"
+  type        = bool
+  default     = true
+}
+
+variable "memory_enable_user_preference" {
+  description = "Enable USER_PREFERENCE memory strategy (user preferences tracking)"
+  type        = bool
+  default     = true
+}
+
+variable "memory_enable_summarization" {
+  description = "Enable SUMMARIZATION memory strategy (session summaries)"
+  type        = bool
+  default     = true
+}

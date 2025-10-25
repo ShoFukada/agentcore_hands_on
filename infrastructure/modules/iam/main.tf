@@ -125,6 +125,25 @@ data "aws_iam_policy_document" "agent_runtime_permissions" {
     resources = ["*"]
   }
 
+  # Bedrock AgentCore Memory permissions (standard set for runtime usage)
+  statement {
+    sid    = "BedrockAgentCoreMemory"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:GetMemory",
+      "bedrock-agentcore:CreateEvent",
+      "bedrock-agentcore:GetEvent",
+      "bedrock-agentcore:ListEvents",
+      "bedrock-agentcore:RetrieveMemoryRecords",
+      "bedrock-agentcore:GetMemoryRecord",
+      "bedrock-agentcore:ListMemoryRecords",
+      "bedrock-agentcore:BatchCreateMemoryRecords",
+      "bedrock-agentcore:ListActors",
+      "bedrock-agentcore:ListSessions"
+    ]
+    resources = ["*"]
+  }
+
   # Additional custom policy statements
   dynamic "statement" {
     for_each = var.additional_policy_statements
@@ -314,4 +333,42 @@ resource "aws_iam_role_policy" "browser" {
   name   = var.browser_policy_name
   role   = aws_iam_role.browser[0].id
   policy = data.aws_iam_policy_document.browser_permissions[0].json
+}
+
+# Memory Execution IAM Role (for Memory resource to invoke Bedrock models)
+data "aws_iam_policy_document" "memory_execution_assume_role" {
+  count = var.create_memory_execution_role ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["bedrock-agentcore.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+resource "aws_iam_role" "memory_execution" {
+  count = var.create_memory_execution_role ? 1 : 0
+
+  name               = var.memory_execution_role_name
+  assume_role_policy = data.aws_iam_policy_document.memory_execution_assume_role[0].json
+
+  tags = var.tags
+}
+
+# Attach AWS managed policy for Bedrock model inference
+resource "aws_iam_role_policy_attachment" "memory_bedrock_inference" {
+  count = var.create_memory_execution_role ? 1 : 0
+
+  role       = aws_iam_role.memory_execution[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonBedrockAgentCoreMemoryBedrockModelInferenceExecutionRolePolicy"
 }

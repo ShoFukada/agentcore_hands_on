@@ -47,3 +47,18 @@ output "browser_role_name" {
   description = "Name of the IAM role for browser"
   value       = var.create_browser_role ? aws_iam_role.browser[0].name : null
 }
+
+output "memory_execution_role_arn" {
+  description = "ARN of the IAM role for memory execution"
+  value       = var.create_memory_execution_role ? aws_iam_role.memory_execution[0].arn : null
+}
+
+output "memory_execution_role_id" {
+  description = "ID of the IAM role for memory execution"
+  value       = var.create_memory_execution_role ? aws_iam_role.memory_execution[0].id : null
+}
+
+output "memory_execution_role_name" {
+  description = "Name of the IAM role for memory execution"
+  value       = var.create_memory_execution_role ? aws_iam_role.memory_execution[0].name : null
+}

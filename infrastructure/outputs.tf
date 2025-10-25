@@ -105,6 +105,42 @@ output "browser_role_arn" {
   value       = module.iam.browser_role_arn
 }
 
+# Memory outputs
+output "memory_id" {
+  description = "Memory ID"
+  value       = module.memory.memory_id
+}
+
+output "memory_arn" {
+  description = "Memory ARN"
+  value       = module.memory.memory_arn
+}
+
+output "memory_name" {
+  description = "Memory name"
+  value       = module.memory.memory_name
+}
+
+output "memory_execution_role_arn" {
+  description = "IAM role ARN for memory execution"
+  value       = module.iam.memory_execution_role_arn
+}
+
+output "semantic_strategy_id" {
+  description = "SEMANTIC strategy ID"
+  value       = module.memory.semantic_strategy_id
+}
+
+output "user_preference_strategy_id" {
+  description = "USER_PREFERENCE strategy ID"
+  value       = module.memory.user_preference_strategy_id
+}
+
+output "summarization_strategy_id" {
+  description = "SUMMARIZATION strategy ID"
+  value       = module.memory.summarization_strategy_id
+}
+
 # Instructions for next steps
 output "next_steps" {
   description = "Instructions for deploying your agent"
@@ -123,6 +159,9 @@ output "next_steps" {
          --agent-runtime-id ${module.agent_runtime.agent_runtime_id} \
          --session-id $(uuidgen) \
          --input-text "Your prompt here"
+
+    4. Memory ID (add to .env):
+       MEMORY_ID=${module.memory.memory_id}
 
     AWS CLI Login command:
        aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${module.ecr.repository_url}

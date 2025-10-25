@@ -77,3 +77,15 @@ variable "browser_policy_name" {
   type        = string
   default     = ""
 }
+
+variable "create_memory_execution_role" {
+  description = "Whether to create a separate IAM role for memory execution"
+  type        = bool
+  default     = true
+}
+
+variable "memory_execution_role_name" {
+  description = "Name of the IAM role for memory execution"
+  type        = string
+  default     = ""
+}

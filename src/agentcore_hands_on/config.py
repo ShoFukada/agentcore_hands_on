@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     CODE_INTERPRETER_ID: str = ""
     BROWSER_ID: str = ""
 
+    # AgentCore Memory settings
+    MEMORY_ID: str = ""
+    DEFAULT_SESSION_ID: str = "default-session"
+    DEFAULT_ACTOR_ID: str = "default-user"
+
     def __init__(self, **data: Any) -> None:  # noqa: ANN401
         super().__init__(**data)
         for field_name, field_value in self.model_dump().items():

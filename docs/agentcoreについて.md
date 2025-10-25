@@ -70,6 +70,9 @@ Agent Runtimeは更新のたびに自動的に新しいバージョンが生成�
 
 エージェントが会話や過去の情報を覚えておくためのストレージ。短期メモリは1つの会話セッション内での記憶、長期メモリは複数のエージェント間で共有できる永続的な記憶。DynamoDBやRDSのような感覚で、エージェントがデータを保存・取得できる。
 
+[わかりやすいサイトこれ](https://dev.classmethod.jp/articles/amazon-bedrock-agentcore-memory-sample-agent/)
+[暗号化したい場合これ](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/storage-encryption.html)
+
 ### Code Interpreter
 **= コード実行用のサンドボックス環境**
 
@@ -139,3 +142,6 @@ graph LR
 
 エージェントの実行状況をトレースし、パフォーマンスを監視するための機能。CloudWatch LogsやX-Rayのような感覚で、OpenTelemetry形式のテレメトリデータを収集し、エージェントの動作を可視化できる。
 
+## Tips
+[Agentcore IAMをまとめたサイト](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/security-iam-awsmanpol.html)
+[同上](https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonbedrockagentcore.html)
