@@ -48,6 +48,12 @@ variable "agent_runtime_id" {
   default     = ""
 }
 
+variable "agent_runtime_endpoint_qualifier" {
+  description = "Agent Runtime endpoint qualifier/suffix (e.g., DEFAULT). Appended to runtime ID for log group names."
+  type        = string
+  default     = "DEFAULT"
+}
+
 # Memory configuration
 variable "memory_retention_days" {
   description = "Number of days to retain memory events (Short-term memory retention)"

@@ -45,17 +45,43 @@ data "aws_iam_policy_document" "agent_runtime_permissions" {
   }
 
   # CloudWatch Logs permissions (including Observability)
+  # Split into 3 statements following AWS official recommendation
+
+  # Log Group level operations
   statement {
-    sid    = "CloudWatchLogs"
+    sid    = "CloudWatchLogsGroup"
     effect = "Allow"
     actions = [
-      "logs:CreateLogGroup",
-      "logs:CreateLogStream",
-      "logs:PutLogEvents",
-      "logs:DescribeLogStreams"
+      "logs:DescribeLogStreams",
+      "logs:CreateLogGroup"
     ]
     resources = [
-      "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/*"
+      "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"
+    ]
+  }
+
+  # Describe all log groups (required for OpenTelemetry)
+  statement {
+    sid    = "CloudWatchLogsDescribeGroups"
+    effect = "Allow"
+    actions = [
+      "logs:DescribeLogGroups"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:*"
+    ]
+  }
+
+  # Log Stream level operations
+  statement {
+    sid    = "CloudWatchLogsStream"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
     ]
   }
 
@@ -65,7 +91,9 @@ data "aws_iam_policy_document" "agent_runtime_permissions" {
     effect = "Allow"
     actions = [
       "xray:PutTraceSegments",
-      "xray:PutTelemetryRecords"
+      "xray:PutTelemetryRecords",
+      "xray:GetSamplingRules",
+      "xray:GetSamplingTargets"
     ]
     resources = ["*"]
   }
@@ -83,6 +111,21 @@ data "aws_iam_policy_document" "agent_runtime_permissions" {
       variable = "cloudwatch:namespace"
       values   = ["bedrock-agentcore"]
     }
+  }
+
+  # Workload Identity Token permissions (required for observability)
+  statement {
+    sid    = "GetAgentAccessToken"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:GetWorkloadAccessToken",
+      "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
+      "bedrock-agentcore:GetWorkloadAccessTokenForUserId"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:workload-identity-directory/default",
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:workload-identity-directory/default/workload-identity/*"
+    ]
   }
 
   # Bedrock model invocation permissions

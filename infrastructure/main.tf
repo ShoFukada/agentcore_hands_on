@@ -124,10 +124,12 @@ module "agent_runtime" {
 
       # リソース属性（サービス名、ロググループ、リソースID）
       # runtime_idはtfvarsから取得（2段階デプロイ後）
-      OTEL_RESOURCE_ATTRIBUTES = var.agent_runtime_id != "" ? "service.name=${var.agent_name},aws.log.group.names=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id},cloud.resource_id=${var.agent_runtime_id}" : "service.name=${var.agent_name}"
+      # ログループ名にはendpoint_qualifierサフィックスを付与（例: runtime_id-DEFAULT）
+      OTEL_RESOURCE_ATTRIBUTES = var.agent_runtime_id != "" ? "service.name=${var.agent_name},aws.log.group.names=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id}-${var.agent_runtime_endpoint_qualifier},cloud.resource_id=${var.agent_runtime_id}" : "service.name=${var.agent_name}"
 
-      # OTLPエクスポーター設定（ロググループ、ログストリーム、メトリクスネームスペース）
-      OTEL_EXPORTER_OTLP_LOGS_HEADERS = var.agent_runtime_id != "" ? "x-aws-log-group=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id},x-aws-log-stream=runtime-logs,x-aws-metric-namespace=bedrock-agentcore" : "x-aws-metric-namespace=bedrock-agentcore"
+      # OTLPエクスポーター設定（ロググループ、メトリクスネームスペース）
+      # ログストリーム名は指定せず、OpenTelemetryに自動生成させる
+      OTEL_EXPORTER_OTLP_LOGS_HEADERS = var.agent_runtime_id != "" ? "x-aws-log-group=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id}-${var.agent_runtime_endpoint_qualifier},x-aws-metric-namespace=bedrock-agentcore" : "x-aws-metric-namespace=bedrock-agentcore"
 
       # プロトコルとエクスポーター設定
       OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"

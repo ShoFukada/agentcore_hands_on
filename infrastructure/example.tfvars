@@ -4,7 +4,7 @@ project_name     = "agentcore-hands-on"
 agent_name       = "my-agent"
 
 # agent update時に更新
-image_tag        = "v1.0.7"
+image_tag        = "v1.0.9"
 
 # 初回デプロイ後に付与
 agent_runtime_id = ""

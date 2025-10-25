@@ -33,7 +33,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aws-opentelemetry-distro", specifier = ">=0.10.0" },
+    { name = "aws-opentelemetry-distro", specifier = ">=0.12.1" },
     { name = "bedrock-agentcore", specifier = ">=1.0.4" },
     { name = "boto3" },
     { name = "fastapi", specifier = ">=0.119.1" },
