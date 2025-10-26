@@ -51,6 +51,10 @@ locals {
   browser_policy            = "${var.project_name}-browser-policy"
   memory_name               = replace("${var.project_name}_${var.agent_name}_memory", "-", "_")
   memory_execution_role     = "${var.project_name}-memory-execution-role"
+
+  # Gateway names
+  gateway_name        = "${var.project_name}-gateway"
+  gateway_target_name = "${var.project_name}-tavily-target"
 }
 
 # ECR Module
@@ -90,6 +94,12 @@ module "iam" {
   # Memory Execution IAM Role
   create_memory_execution_role = true
   memory_execution_role_name   = local.memory_execution_role
+
+  # Gateway IAM Role
+  create_gateway_role  = true
+  gateway_role_name    = "${var.project_name}-gateway-role"
+  gateway_policy_name  = "${var.project_name}-gateway-policy"
+  lambda_function_arns = []
 
   tags = local.common_tags
 }
@@ -141,6 +151,10 @@ module "agent_runtime" {
     # Memory ID
     {
       MEMORY_ID = module.memory.memory_id
+    },
+    # Gateway URL for Tavily Search
+    {
+      TAVILY_GATEWAY_URL = module.gateway.gateway_url
     }
   )
 
@@ -202,6 +216,24 @@ module "memory" {
   summarization_strategy_name          = "${replace(var.project_name, "-", "_")}_summary_strategy"
   summarization_strategy_description   = "Generate session summaries with key insights"
   summarization_namespaces             = ["${var.project_name}/summaries/{actorId}/{sessionId}"]
+
+  tags = local.common_tags
+}
+
+# Gateway Module (MCP Tools Integration)
+module "gateway" {
+  source = "./modules/gateway"
+
+  gateway_name     = local.gateway_name
+  gateway_role_arn = module.iam.gateway_role_arn
+  description      = "Gateway for integrating MCP tools with ${var.agent_name}"
+
+  protocol_type   = "MCP"
+  authorizer_type = "AWS_IAM"
+
+  # Tavily configuration
+  tavily_api_key     = var.tavily_api_key
+  tavily_target_name = local.gateway_target_name
 
   tags = local.common_tags
 }

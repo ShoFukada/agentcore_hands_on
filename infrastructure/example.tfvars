@@ -14,3 +14,6 @@ memory_retention_days          = 90
 memory_enable_semantic         = true
 memory_enable_user_preference  = true
 memory_enable_summarization    = true
+
+# Gateway configuration
+tavily_api_key = "your-tavily-api-key-here"

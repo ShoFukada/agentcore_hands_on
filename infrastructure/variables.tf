@@ -78,3 +78,11 @@ variable "memory_enable_summarization" {
   type        = bool
   default     = true
 }
+
+# Gateway configuration
+variable "tavily_api_key" {
+  description = "Tavily API Key for search functionality"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

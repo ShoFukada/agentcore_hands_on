@@ -141,6 +141,37 @@ output "summarization_strategy_id" {
   value       = module.memory.summarization_strategy_id
 }
 
+# Gateway outputs
+output "gateway_id" {
+  description = "Gateway ID"
+  value       = module.gateway.gateway_id
+}
+
+output "gateway_arn" {
+  description = "Gateway ARN"
+  value       = module.gateway.gateway_arn
+}
+
+output "gateway_url" {
+  description = "Gateway URL endpoint"
+  value       = module.gateway.gateway_url
+}
+
+output "gateway_role_arn" {
+  description = "IAM role ARN for gateway"
+  value       = module.iam.gateway_role_arn
+}
+
+output "tavily_target_id" {
+  description = "Tavily Gateway Target ID"
+  value       = module.gateway.tavily_target_id
+}
+
+output "tavily_credential_provider_arn" {
+  description = "Tavily API Key Credential Provider ARN"
+  value       = module.gateway.tavily_credential_provider_arn
+}
+
 # Instructions for next steps
 output "next_steps" {
   description = "Instructions for deploying your agent"
@@ -160,8 +191,9 @@ output "next_steps" {
          --session-id $(uuidgen) \
          --input-text "Your prompt here"
 
-    4. Memory ID (add to .env):
+    4. Add to .env file:
        MEMORY_ID=${module.memory.memory_id}
+       TAVILY_GATEWAY_URL=${module.gateway.gateway_url}
 
     AWS CLI Login command:
        aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${module.ecr.repository_url}
