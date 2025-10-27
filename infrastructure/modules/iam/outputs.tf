@@ -62,3 +62,18 @@ output "memory_execution_role_name" {
   description = "Name of the IAM role for memory execution"
   value       = var.create_memory_execution_role ? aws_iam_role.memory_execution[0].name : null
 }
+
+output "gateway_role_arn" {
+  description = "ARN of the IAM role for gateway"
+  value       = var.create_gateway_role ? aws_iam_role.gateway[0].arn : null
+}
+
+output "gateway_role_id" {
+  description = "ID of the IAM role for gateway"
+  value       = var.create_gateway_role ? aws_iam_role.gateway[0].id : null
+}
+
+output "gateway_role_name" {
+  description = "Name of the IAM role for gateway"
+  value       = var.create_gateway_role ? aws_iam_role.gateway[0].name : null
+}

@@ -187,6 +187,22 @@ data "aws_iam_policy_document" "agent_runtime_permissions" {
     resources = ["*"]
   }
 
+  # Bedrock AgentCore Gateway permissions (for invoking gateway targets)
+  statement {
+    sid    = "BedrockAgentCoreGateway"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:InvokeGateway",
+      "bedrock-agentcore:GetGateway",
+      "bedrock-agentcore:ListGateways",
+      "bedrock-agentcore:GetGatewayTarget",
+      "bedrock-agentcore:ListGatewayTargets"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:gateway/*"
+    ]
+  }
+
   # Additional custom policy statements
   dynamic "statement" {
     for_each = var.additional_policy_statements
@@ -414,4 +430,101 @@ resource "aws_iam_role_policy_attachment" "memory_bedrock_inference" {
 
   role       = aws_iam_role.memory_execution[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonBedrockAgentCoreMemoryBedrockModelInferenceExecutionRolePolicy"
+}
+
+# ================================================================
+# Gateway IAM Role
+# ================================================================
+data "aws_iam_policy_document" "gateway_assume_role" {
+  count = var.create_gateway_role ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["bedrock-agentcore.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "gateway_permissions" {
+  count = var.create_gateway_role ? 1 : 0
+
+  # Lambda invocation for Gateway Targets (only if Lambda functions are configured)
+  dynamic "statement" {
+    for_each = length(var.lambda_function_arns) > 0 ? [1] : []
+    content {
+      sid    = "LambdaInvoke"
+      effect = "Allow"
+      actions = [
+        "lambda:InvokeFunction"
+      ]
+      resources = var.lambda_function_arns
+    }
+  }
+
+  # CloudWatch Logs
+  statement {
+    sid    = "CloudWatchLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/gateway/*"
+    ]
+  }
+
+  # Identity (Credential Provider) access
+  statement {
+    sid    = "IdentityCredentialAccess"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:GetCredentialProvider",
+      "bedrock-agentcore:ListCredentialProviders"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:credential-provider/*"
+    ]
+  }
+
+  # Secrets Manager for API keys (if using Secrets Manager instead of inline API keys)
+  statement {
+    sid    = "SecretsManagerAccess"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:secretsmanager:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:secret:bedrock-agentcore/credentials/*"
+    ]
+  }
+}
+
+resource "aws_iam_role" "gateway" {
+  count = var.create_gateway_role ? 1 : 0
+
+  name               = var.gateway_role_name
+  assume_role_policy = data.aws_iam_policy_document.gateway_assume_role[0].json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy" "gateway" {
+  count = var.create_gateway_role ? 1 : 0
+
+  name   = var.gateway_policy_name
+  role   = aws_iam_role.gateway[0].id
+  policy = data.aws_iam_policy_document.gateway_permissions[0].json
 }

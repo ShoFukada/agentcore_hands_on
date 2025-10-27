@@ -11,4 +11,6 @@ def test_health_check():
     """ヘルスチェックエンドポイントのテスト"""
     response = client.get("/ping")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+    result = response.json()
+    assert result["status"] == "Healthy"
+    assert "time_of_last_update" in result

@@ -89,3 +89,27 @@ variable "memory_execution_role_name" {
   type        = string
   default     = ""
 }
+
+variable "create_gateway_role" {
+  description = "Whether to create a separate IAM role for gateway"
+  type        = bool
+  default     = true
+}
+
+variable "gateway_role_name" {
+  description = "Name of the IAM role for gateway"
+  type        = string
+  default     = ""
+}
+
+variable "gateway_policy_name" {
+  description = "Name of the IAM policy for gateway"
+  type        = string
+  default     = ""
+}
+
+variable "lambda_function_arns" {
+  description = "List of Lambda function ARNs that the gateway can invoke"
+  type        = list(string)
+  default     = []
+}
