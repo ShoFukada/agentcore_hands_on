@@ -1,21 +1,20 @@
 """Strands Agent Runtime with OpenTelemetry support.
 
-/ping と /invocations エンドポイントを実装
+AgentCore SDK を使用した実装
 """
 
 import json
 import logging
 import sys
 
+from bedrock_agentcore import BedrockAgentCoreApp
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 from bedrock_agentcore.memory.integrations.strands.session_manager import (
     AgentCoreMemorySessionManager,
 )
 from bedrock_agentcore.tools.browser_client import BrowserClient
 from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
-from fastapi import FastAPI
 from playwright.sync_api import sync_playwright
-from pydantic import BaseModel
 from strands import Agent, tool
 from strands.models.bedrock import BedrockModel
 
@@ -31,7 +30,8 @@ logger = logging.getLogger(__name__)
 # 設定の読み込み
 settings = Settings()
 
-app = FastAPI(title="Strands Agent Runtime")
+# AgentCore アプリケーションを作成
+app = BedrockAgentCoreApp(debug=True)
 
 
 @tool
@@ -208,67 +208,50 @@ def create_agent(session_id: str | None = None, actor_id: str | None = None) -> 
     )
 
 
-class InvocationRequest(BaseModel):
-    """リクエストモデル"""
-
-    input: dict
-    session_id: str | None = None
-    actor_id: str | None = None
-
-
-class InvocationResponse(BaseModel):
-    """レスポンスモデル"""
-
-    output: dict
-    session_id: str | None = None
-
-
-@app.get("/ping")
-def health_check() -> dict[str, str]:
-    """ヘルスチェックエンドポイント"""
-    logger.info("ヘルスチェックリクエストを受信")
-    return {"status": "healthy"}
-
-
-@app.post("/invocations")
-def invoke(request: InvocationRequest) -> InvocationResponse:
-    """メインの呼び出しエンドポイント - Strands Agent を使用
+@app.entrypoint
+def invoke(payload: dict) -> dict:
+    """AgentCore Runtimeのエントリーポイント
 
     Code Interpreter と Browser ツールを統合したAIエージェントとして動作します。
     MEMORY_IDが設定されている場合、会話履歴が保存されます。
+
+    Args:
+        payload: 入力データ(prompt, session_id, actor_idを含む)
+
+    Returns:
+        dict: レスポンスデータ(responseを含む)
+
     """
-    prompt = request.input.get("prompt", "")
+    prompt = payload.get("prompt", "")
+    session_id = payload.get("session_id")
+    actor_id = payload.get("actor_id")
+
     logger.info(
         "リクエストを受信: prompt=%s, session_id=%s, actor_id=%s",
         prompt,
-        request.session_id,
-        request.actor_id,
+        session_id,
+        actor_id,
     )
 
     try:
         # session_idとactor_idを使用してAgentを作成
         current_agent = create_agent(
-            session_id=request.session_id,
-            actor_id=request.actor_id,
+            session_id=session_id,
+            actor_id=actor_id,
         )
 
         # Strands Agent で処理
         response = current_agent(prompt)
         response_text = str(response)
 
-        return InvocationResponse(
-            output={"response": response_text},
-            session_id=request.session_id,
-        )
+        logger.info("Agent実行完了")
     except Exception as e:
         logger.exception("Agent 実行中にエラーが発生")
-        return InvocationResponse(
-            output={"response": f"エラーが発生しました: {e!s}"},
-            session_id=request.session_id,
-        )
+        return {"response": f"エラーが発生しました: {e!s}"}
+    else:
+        return {"response": response_text}
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8080)  # noqa: S104
+    # AgentCore Runtime でアプリケーションを起動
+    app.run()

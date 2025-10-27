@@ -46,4 +46,5 @@ EXPOSE 8080
 
 # アプリケーションの起動
 # opentelemetry-instrument で起動して CloudWatch Logs にログを送信
-CMD ["opentelemetry-instrument", "uvicorn", "agentcore_hands_on.agent:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
+# AgentCore SDK を使用するため、uvicorn ではなく python で直接起動
+CMD ["opentelemetry-instrument", "python", "-m", "agentcore_hands_on.agent"]

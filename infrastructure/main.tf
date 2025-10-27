@@ -113,50 +113,19 @@ module "agent_runtime" {
   role_arn           = module.iam.role_arn
   container_uri      = var.container_image_uri != "" ? var.container_image_uri : "${module.ecr.repository_url}:${var.image_tag}"
 
-  environment_variables = merge(
-    {
-      # 既存の環境変数
-      LOG_LEVEL   = var.log_level
-      ENVIRONMENT = var.environment
+  environment_variables = {
+    # アプリケーション設定
+    LOG_LEVEL   = var.log_level
+    ENVIRONMENT = var.environment
 
-      # Code Interpreter ID
-      CODE_INTERPRETER_ID = module.code_interpreter.code_interpreter_id
+    # AgentCore リソースID
+    CODE_INTERPRETER_ID = module.code_interpreter.code_interpreter_id
+    BROWSER_ID          = module.browser.browser_id
+    MEMORY_ID           = module.memory.memory_id
 
-      # Browser ID
-      BROWSER_ID = module.browser.browser_id
-
-      # AgentCore Observability設定
-      AGENT_OBSERVABILITY_ENABLED = "true"
-
-      # OpenTelemetry基本設定
-      OTEL_PYTHON_DISTRO       = "aws_distro"
-      OTEL_PYTHON_CONFIGURATOR = "aws_configurator"
-
-      # リソース属性（サービス名、ロググループ、リソースID）
-      # runtime_idはtfvarsから取得（2段階デプロイ後）
-      # ログループ名にはendpoint_qualifierサフィックスを付与（例: runtime_id-DEFAULT）
-      OTEL_RESOURCE_ATTRIBUTES = var.agent_runtime_id != "" ? "service.name=${var.agent_name},aws.log.group.names=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id}-${var.agent_runtime_endpoint_qualifier},cloud.resource_id=${var.agent_runtime_id}" : "service.name=${var.agent_name}"
-
-      # OTLPエクスポーター設定（ロググループ、メトリクスネームスペース）
-      # ログストリーム名は指定せず、OpenTelemetryに自動生成させる
-      OTEL_EXPORTER_OTLP_LOGS_HEADERS = var.agent_runtime_id != "" ? "x-aws-log-group=/aws/bedrock-agentcore/runtimes/${var.agent_runtime_id}-${var.agent_runtime_endpoint_qualifier},x-aws-metric-namespace=bedrock-agentcore" : "x-aws-metric-namespace=bedrock-agentcore"
-
-      # プロトコルとエクスポーター設定
-      OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
-      OTEL_TRACES_EXPORTER        = "otlp"
-
-      # サンプリング設定（開発環境なので100%）
-      OTEL_TRACES_SAMPLER = "always_on"
-    },
-    # Memory ID
-    {
-      MEMORY_ID = module.memory.memory_id
-    },
-    # Gateway URL for Tavily Search
-    {
-      TAVILY_GATEWAY_URL = module.gateway.gateway_url
-    }
-  )
+    # Gateway URL for Tavily Search (Temporarily commented out)
+    # TAVILY_GATEWAY_URL = module.gateway.gateway_url
+  }
 
   network_mode    = "PUBLIC"
   server_protocol = "HTTP"
@@ -221,19 +190,21 @@ module "memory" {
 }
 
 # Gateway Module (MCP Tools Integration)
-module "gateway" {
-  source = "./modules/gateway"
-
-  gateway_name     = local.gateway_name
-  gateway_role_arn = module.iam.gateway_role_arn
-  description      = "Gateway for integrating MCP tools with ${var.agent_name}"
-
-  protocol_type   = "MCP"
-  authorizer_type = "AWS_IAM"
-
-  # Tavily configuration
-  tavily_api_key     = var.tavily_api_key
-  tavily_target_name = local.gateway_target_name
-
-  tags = local.common_tags
-}
+# Temporarily commented out due to Terraform provider bug with AWS_IAM authorizer
+# See: https://github.com/hashicorp/terraform-provider-aws/issues
+# module "gateway" {
+#   source = "./modules/gateway"
+#
+#   gateway_name     = local.gateway_name
+#   gateway_role_arn = module.iam.gateway_role_arn
+#   description      = "Gateway for integrating MCP tools with ${var.agent_name}"
+#
+#   protocol_type   = "MCP"
+#   authorizer_type = "AWS_IAM"
+#
+#   # Tavily configuration
+#   tavily_api_key     = var.tavily_api_key
+#   tavily_target_name = local.gateway_target_name
+#
+#   tags = local.common_tags
+# }

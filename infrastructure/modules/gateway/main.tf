@@ -18,9 +18,8 @@ resource "aws_bedrockagentcore_gateway" "main" {
   authorizer_type = var.authorizer_type
   protocol_type   = var.protocol_type
 
-  # Note: According to AWS API docs, authorizer_configuration is only required for CUSTOM_JWT
-  # For AWS_IAM, it should not be provided
-  # However, Terraform provider seems to require it - this might be a provider bug
+  # For AWS_IAM authorizer_type, do not include authorizer_configuration
+  # The provider requires it at plan time but will fail at apply time with empty block
 
   tags = var.tags
 }
