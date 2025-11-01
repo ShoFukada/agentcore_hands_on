@@ -1,127 +1,170 @@
 # AgentCore Hands-on
 
-AWS Bedrock AgentCore Runtime with Strands and OpenTelemetry.
+AWS Bedrock AgentCore Runtime with Strands AI framework.
 
 ## Overview
 
-This project demonstrates:
-- AWS Bedrock AgentCore Runtime deployment
-- Strands AI agent framework with OpenTelemetry support
-- **AgentCore Memory integration for conversation persistence**
-- Code Interpreter and Browser tools integration
-- Infrastructure as Code with Terraform
-- Observability with CloudWatch
+Bedrock AgentCore の主要機能を実装したハンズオンプロジェクト:
 
-## Quick Start
+- **Agent Runtime**: Strands AI エージェントフレームワークとの統合
+- **Code Interpreter**: Python コード実行環境
+- **Browser**: Web ブラウザ自動化
+- **Memory**: セッション・ユーザー単位の会話記憶
+- **Gateway + Identity**: Tavily API を使った Web 検索（AWS_IAM 認証）
+- **Observability**: CloudWatch による監視
 
-### Installation
+## Dependencies
+
+- Python >= 3.12
+- uv (パッケージマネージャー)
+- Docker
+- Terraform
+- AWS CLI
+
+主要な Python パッケージ:
+- `bedrock-agentcore>=1.0.4`
+- `strands-agents[otel]>=0.1.0`
+- `boto3`
+- `fastapi>=0.120.0`
+- `httpx-aws-auth>=4.1.1`
+
+## Setup
 
 ```bash
-# Install dependencies
+# 依存関係のインストール
 uv sync
 
-# Copy environment file and configure
-cp .env.example .env
-# Edit .env with your AWS credentials and AgentCore resource IDs
+# 環境変数ファイルの作成
+cp .env.sample .env
 ```
 
-### Configuration
+## Infrastructure Deploy
 
-Get your AgentCore resource IDs from Terraform outputs:
+### 初回デプロイ
 
 ```bash
 cd infrastructure
+
+# tfvars ファイルを編集
+cp example.tfvars terraform.tfvars
+# terraform.tfvars を編集して設定
+
+# デプロイ
+terraform init
+terraform plan
+terraform apply
+```
+
+**注意**: Observability 機能を使う場合、事前に AWS コンソールから Transaction Search を ON にしておく必要があります。
+
+### インフラ更新
+
+```bash
+cd infrastructure
+terraform plan
+terraform apply
+```
+
+デプロイ後、`.env` ファイルに以下を設定:
+
+```bash
+# Terraform の出力値を取得
 terraform output
+
+# .env に設定
+CODE_INTERPRETER_ID=<terraform output から>
+BROWSER_ID=<terraform output から>
+MEMORY_ID=<terraform output から>
+GATEWAY_URL=<terraform output から>
+GATEWAY_ID=<terraform output から>
+GATEWAY_TARGET_PREFIX=<terraform output から>
 ```
 
-Add the following to your `.env` file:
-```env
-CODE_INTERPRETER_ID=<from terraform output>
-BROWSER_ID=<from terraform output>
-MEMORY_ID=<from terraform output>  # Set to enable Memory integration
+## Application Deploy
+
+アプリケーションコードを更新してデプロイする手順:
+
+### 1. バージョンを変更
+
+`infrastructure/terraform.tfvars` の `image_tag` を更新:
+
+```hcl
+image_tag = "v1.1.4"  # バージョンを変更
 ```
 
-### Local Testing
-
-Agent をローカルで実行してテストする:
+### 2. コンテナのビルド & プッシュ
 
 ```bash
-# Agent サーバーを起動
-uv run uvicorn agentcore_hands_on.agent:app --host 0.0.0.0 --port 8080
+# AWS プロファイルを設定
+export AWS_PROFILE=<your-aws-profile>
 
-# 別のターミナルで動作確認
-curl -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{"input": {"prompt": "Hello, Agent!"}, "session_id": "test-session", "actor_id": "user-123"}'
+# ECR にビルド & プッシュ
+./scripts/build_and_push.sh <ECR_REPOSITORY_URL> <TAG>
 
-# Memory統合のテスト（複数回のやり取りで会話が保存される）
-curl -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{"input": {"prompt": "My name is Alice"}, "session_id": "conversation-1", "actor_id": "user-123"}'
+# 例:
+./scripts/build_and_push.sh 123456789012.dkr.ecr.us-east-1.amazonaws.com/agentcore-hands-on-my-agent v1.1.4
+```
 
-curl -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{"input": {"prompt": "What is my name?"}, "session_id": "conversation-1", "actor_id": "user-123"}'
+### 3. Terraform でデプロイ
 
-# ヘルスチェック
+```bash
+cd infrastructure
+terraform apply
+```
+
+## Local Execution
+
+ローカルで Agent サーバーを起動してテスト:
+
+```bash
+# サーバー起動
+uv run -m agentcore_hands_on.agent
+
+# 別ターミナルで動作確認
 curl http://localhost:8080/ping
+
+# Agent の実行
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Hello!",
+    "session_id": "test-session",
+    "actor_id": "user-123"
+  }'
 ```
 
-### Development
+## AgentCore Runtime Execution
+
+デプロイされた AgentCore Runtime を実行:
 
 ```bash
-# Run tests
-uv run pytest
+export AWS_PROFILE=<your-aws-profile>
 
-# Run linting
-uv run ruff check .
-
-# Run type checking
-uv run pyright
-
-# Format code
-uv run ruff format .
+uv run python src/agentcore_hands_on/invoke_agent.py \
+  --runtime-arn "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/your-runtime-id" \
+  --prompt "Search the web for latest AI news" \
+  --session-id "my-session-123" \
+  --actor-id "user-alice" \
+  --region us-east-1
 ```
 
 ## Features
 
-### AgentCore Memory Integration
-
-The agent supports conversation memory persistence using AWS Bedrock AgentCore Memory:
-
-- **Session-based memory**: Conversations are tracked by `session_id`
-- **User-based memory**: User context is tracked by `actor_id`
-- **Automatic persistence**: All conversations are automatically saved when `MEMORY_ID` is set
-- **Memory strategies**: Supports SEMANTIC, SUMMARIZATION, and USER_PREFERENCE strategies
-
-**Memory Configuration:**
-- Set `MEMORY_ID` in `.env` to enable (leave empty to disable)
-- Use `session_id` to group related conversations
-- Use `actor_id` to identify different users
-- Memory is shared across sessions for the same actor
-
-**Example:**
-```json
-{
-  "input": {"prompt": "Remember that I like Python"},
-  "session_id": "chat-001",
-  "actor_id": "user-alice"
-}
-```
-
 ### Code Interpreter
-
-Execute Python code in a sandboxed environment:
-- Data analysis and calculations
-- File processing
-- Code execution with safety
+Python コードをサンドボックス環境で実行。データ分析やファイル処理に使用。
 
 ### Browser
+Web ページの自動操作。URL へのアクセス、コンテンツ抽出、ページ操作。
 
-Automate web browsing tasks:
-- Visit URLs and extract content
-- Get page titles and text
-- Interact with web pages
+### Memory
+- **Session Memory**: `session_id` で会話をグループ化
+- **User Memory**: `actor_id` でユーザーを識別
+- **Memory Strategies**: SEMANTIC、SUMMARIZATION、USER_PREFERENCE
+
+### Gateway + Identity (Tavily Web Search)
+- Tavily API を使った Web 検索
+- AWS_IAM 認証による Gateway アクセス
+- API キーは AgentCore Identity (Credential Provider) に保存
 
 ## Project Structure
 
@@ -129,29 +172,44 @@ Automate web browsing tasks:
 .
 ├── src/
 │   └── agentcore_hands_on/
-│       ├── __init__.py
-│       ├── agent.py           # Main agent with Memory integration
-│       ├── config.py           # Configuration with Memory settings
-│       └── invoke_agent.py
+│       ├── agent.py           # メインエージェント実装
+│       ├── config.py           # 設定管理
+│       └── invoke_agent.py    # Runtime 実行スクリプト
 ├── infrastructure/
-│   ├── modules/
-│   │   ├── memory/            # AgentCore Memory Terraform module
+│   ├── modules/               # Terraform モジュール
 │   │   ├── agent_runtime/
 │   │   ├── code_interpreter/
-│   │   └── browser/
-│   └── main.tf
-├── docs/
-│   ├── chat/memory/           # Memory IAM documentation
-│   └── terraform_docs/        # Terraform resource docs
+│   │   ├── browser/
+│   │   ├── memory/
+│   │   ├── gateway/
+│   │   └── iam/
+│   ├── main.tf
+│   ├── terraform.tfvars
+│   └── example.tfvars
+├── scripts/
+│   └── build_and_push.sh      # Docker ビルド & プッシュ
 ├── tests/
+├── docs/                      # ドキュメント
 ├── pyproject.toml
-└── .env.example
+├── .env.sample
+└── README.md
 ```
 
-## Requirements
+## Development
 
-- Python >= 3.12
-- uv package manager
+```bash
+# テスト実行
+uv run pytest
+
+# Linting
+uv run ruff check .
+
+# 型チェック
+uv run pyright
+
+# フォーマット
+uv run ruff format .
+```
 
 ## License
 

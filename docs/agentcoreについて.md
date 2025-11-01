@@ -66,7 +66,8 @@ Agent Runtimeは更新のたびに自動的に新しいバージョンが生成�
 **= エージェントが使える記憶領域（短期・長期）**
 
 **Terraformリソース:**
-- 現時点ではTerraformリソース未提供（コンソール/APIのみ）
+- [Memory](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrockagentcore_memory) - メモリストア本体
+- [Memory Strategy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrockagentcore_memory_strategy) - メモリの戦略設定
 
 エージェントが会話や過去の情報を覚えておくためのストレージ。短期メモリは1つの会話セッション内での記憶、長期メモリは複数のエージェント間で共有できる永続的な記憶。DynamoDBやRDSのような感覚で、エージェントがデータを保存・取得できる。
 
@@ -121,18 +122,21 @@ graph LR
 ```
 
 参考: https://zenn.dev/aws_japan/articles/1b29bc6b8de3ca
+ちなみにこのリンクの例ではInbound AuthとしてCustom JWT(Cognito Provider)を使っており、agent実行環境上でclient credentialsフロー(つまり、agentのみの認証)としてトークンを取得している。
 
 ### Identity (Credential Provider)
 **= エージェント用の認証情報管理サービス**
 
 **Terraformリソース:**
 - [API Key Credential Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrockagentcore_api_key_credential_provider) - APIキー認証用
-- OAuth2/Workload Providerは現時点では未提供の可能性あり
+- [OAuth2 Credential Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrockagentcore_oauth2_credential_provider) - OAuth2認証用
+- [Workload Identity](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrockagentcore_workload_identity) - AWSワークロードアイデンティティ認証用
+- [Token Vault CMK](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrockagentcore_token_vault_cmk) - 認証トークン暗号化用のKMSキー
 
-エージェントが外部サービスにアクセスする際の認証情報を安全に管理する仕組み。Secrets Managerのような感覚で、以下の認証方式をサポート:
-- **API Key**: APIキーベースの認証（Terraform対応済み）
-- **OAuth2**: OAuth2フローでの認証（今後対応予定？）
-- **Workload Provider**: AWSワークロードアイデンティティでの認証（今後対応予定？）
+エージェントが外部サービスにアクセスする際の認証情報を安全に管理する仕組み。Secrets Managerのような感覚(apikey等の実態はsecrets managerに保存される。)で、以下の認証方式をサポート:
+- **API Key**: APIキーベースの認証
+- **OAuth2**: OAuth2フローでの認証
+- **Workload Identity**: AWSワークロードアイデンティティでの認証
 
 ### Observability
 **= エージェントの動作を監視・デバッグする仕組み**
@@ -140,7 +144,170 @@ graph LR
 **Terraformリソース:**
 - 現時点ではTerraformリソース未提供（コンソール/APIのみ）
 
+**設定方法:**
+- AgentCore SDK を使ってエージェントをデプロイすることで、Observabilityが自動的に有効化される
+- **前提条件**: AWSアカウント単位で「Enable Transaction Search」を事前にオンにする必要がある
+
 エージェントの実行状況をトレースし、パフォーマンスを監視するための機能。CloudWatch LogsやX-Rayのような感覚で、OpenTelemetry形式のテレメトリデータを収集し、エージェントの動作を可視化できる。
+
+## AgentCore Identity, Gateway と認証について
+
+![AgentCore認証の仕組み](agentcore_auth.png)
+
+### 認証の全体像
+
+AgentCoreでは**2段階の認証**があります：
+
+1. **Inbound認証（入口）**: 誰がAgent/Gatewayを使えるか
+2. **Outbound認証（出口）**: Agent/Gatewayがどのリソースにアクセスできるか
+
+```mermaid
+graph LR
+    User[ユーザー/アプリ]
+    Agent[Agent Runtime]
+    Gateway[Gateway]
+    Target1[Lambda/AWS]
+    Target2[外部API<br/>Tavily/Google等]
+    Identity[Identity<br/>Credential Provider]
+
+    User -->|①Inbound認証<br/>IAM or JWT| Agent
+    Agent -->|②Inbound認証<br/>Workload Token| Gateway
+    Gateway -->|③Outbound認証<br/>IAM Role| Target1
+    Gateway -->|③Outbound認証<br/>OAuth/API Key| Target2
+
+    Identity -.->|認証情報提供| Gateway
+
+    style User fill:#e1f5ff
+    style Agent fill:#fff4e1
+    style Gateway fill:#ffe1f5
+    style Identity fill:#e1ffe1
+```
+
+### Inbound認証 vs Outbound認証
+
+| | Inbound認証 | Outbound認証 |
+|---|---|---|
+| **認証タイミング** | ユーザー → Agent/Gateway | Agent/Gateway → 外部リソース |
+| **認証方式** | AWS_IAM または CUSTOM_JWT | IAM/OAuth/API Key |
+| **設定場所** | `authorizer_type` | Gateway Target の設定 |
+
+
+### パターン1: AWS IAM認証（ログイン不要）
+
+**ユースケース**: AWSサービス（EC2、Lambda、ECS等）からの呼び出し
+
+```mermaid
+sequenceDiagram
+    participant Caller as 呼び出し元<br/>(EC2/Lambda等)
+    participant Runtime as AgentCore Runtime<br/>(AWS_IAM)
+    participant Agent as Agent Logic
+    participant GW as Gateway
+    participant Identity as Identity<br/>(Credential Provider)
+    participant Tavily as Tavily API
+
+    Note over Caller: ログイン不要！<br/>IAMロールが自動付与
+    Caller->>Runtime: Runtimeにリクエスト<br/>(AWS SigV4署名自動付与)
+    Runtime->>Runtime: Inbound Auth<br/>IAMポリシーチェック<br/>bedrock-agentcore:InvokeAgentRuntime
+    Runtime-->>Caller: ✓ 認証成功
+
+    Runtime->>Agent: Agent実行
+    Agent->>Agent: ツール呼び出し判断<br/>tool_call("tavily_search")
+
+    Agent->>GW: Gatewayにリクエスト<br/>(Workload Token)
+    GW->>GW: Gateway Inbound Auth<br/>このRuntimeは許可されているか？
+    GW-->>Agent: ✓ 認証成功
+
+    GW->>Identity: Tavily API Key取得<br/>(Credential Provider)
+    Identity-->>GW: API Key返却
+    GW->>Tavily: API呼び出し<br/>X-API-Key: <key>
+    Tavily->>Tavily: API Key検証
+    Tavily-->>GW: 検索結果
+    GW-->>Agent: レスポンス
+    Agent-->>Caller: 最終結果
+
+    Note over Caller,Tavily: すべて自動認証<br/>開発者はコード不要
+```
+
+**特徴**:
+- ユーザーログイン不要(つまり、上の画像において、AgentRuntime前のInbound Authは用意しなくても良いということ。)
+- IAMロールに権限があればOK
+
+### パターン2: JWT認証
+
+**ユースケース**: Webアプリ、モバイルアプリからの呼び出し
+
+```mermaid
+sequenceDiagram
+    participant User as 太郎さん<br/>(Webブラウザ)
+    participant Cognito as Amazon Cognito<br/>(IdP)
+    participant Runtime as AgentCore Runtime<br/>(CUSTOM_JWT)
+    participant Agent as Agent Logic
+    participant GW as Gateway
+    participant Identity as Identity<br/>(Credential Provider)
+    participant Tavily as Tavily API
+
+    User->>Cognito: ログイン<br/>(email/password)
+    Cognito->>Cognito: 認証確認
+    Cognito-->>User: JWTトークン発行<br/>{sub: "taro123", ...}
+
+    Note over User: ここからAgentにアクセス
+    User->>Runtime: Runtimeにリクエスト<br/>Authorization: Bearer <JWT>
+    Runtime->>Runtime: Inbound Auth<br/>JWT検証<br/>①署名確認<br/>②有効期限<br/>③allowed_audience
+    Runtime-->>User: ✓ 太郎さんとして認証
+
+    Runtime->>Agent: Agent実行
+    Agent->>Agent: ツール呼び出し判断<br/>tool_call("tavily_search")
+
+    Agent->>GW: Gatewayにリクエスト<br/>(Workload Token + user_id)
+    GW->>GW: Gateway Inbound Auth<br/>このRuntimeとユーザーは許可？
+    GW-->>Agent: ✓ 認証成功
+
+    GW->>Identity: Tavily API Key取得<br/>(Credential Provider)
+    Identity-->>GW: API Key返却
+    GW->>Tavily: API呼び出し<br/>X-API-Key: <key>
+    Tavily->>Tavily: API Key検証
+    Tavily-->>GW: 検索結果
+    GW-->>Agent: レスポンス
+    Agent-->>User: 最終結果
+
+    Note over User,Tavily: ユーザーログイン必須<br/>Cognitoと連携が必要
+```
+
+**特徴**:
+- ユーザーログイン必須(Client Credntialsフローのみ不要)
+
+
+### Identity（Credential Provider）の役割
+
+**Identity = 外部APIの認証情報を安全に管理する仕組み**
+
+```mermaid
+graph TD
+    GW[Gateway]
+    Identity[Identity Service]
+    APIKey[API Key Provider]
+    OAuth[OAuth2 Provider]
+    Vault[Token Vault<br/>暗号化ストレージ]
+
+    Tavily[Tavily API]
+    Google[Google Drive API]
+    Slack[Slack API]
+
+    GW -->|Tavily用の認証情報が必要| Identity
+    Identity -->|API Key方式| APIKey
+    Identity -->|OAuth方式| OAuth
+
+    APIKey -->|暗号化保存| Vault
+    OAuth -->|OAuth Token保存<br/>Key: WorkloadID + UserID| Vault
+
+    Vault -.->|API Key| Tavily
+    Vault -.->|OAuth Token| Google
+    Vault -.->|OAuth Token| Slack
+
+    style Identity fill:#e1ffe1
+    style Vault fill:#fff4e1
+```
+
 
 ## Tips
 [Agentcore IAMをまとめたサイト](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/security-iam-awsmanpol.html)

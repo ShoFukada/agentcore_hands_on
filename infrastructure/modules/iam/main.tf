@@ -492,22 +492,39 @@ data "aws_iam_policy_document" "gateway_permissions" {
     effect = "Allow"
     actions = [
       "bedrock-agentcore:GetCredentialProvider",
-      "bedrock-agentcore:ListCredentialProviders"
+      "bedrock-agentcore:ListCredentialProviders",
+      "bedrock-agentcore:GetResourceApiKey"
     ]
     resources = [
-      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:credential-provider/*"
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:credential-provider/*",
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:token-vault/*",
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:workload-identity-directory/*"
     ]
   }
 
-  # Secrets Manager for API keys (if using Secrets Manager instead of inline API keys)
+  # Secrets Manager for API keys (dynamically referenced from Credential Providers)
+  dynamic "statement" {
+    for_each = length(var.gateway_secrets_arns) > 0 ? [1] : []
+    content {
+      sid    = "SecretsManagerAccess"
+      effect = "Allow"
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ]
+      resources = var.gateway_secrets_arns
+    }
+  }
+
+  # Workload Identity Token permissions (required for accessing Credential Providers)
   statement {
-    sid    = "SecretsManagerAccess"
+    sid    = "GetWorkloadAccessToken"
     effect = "Allow"
     actions = [
-      "secretsmanager:GetSecretValue"
+      "bedrock-agentcore:GetWorkloadAccessToken"
     ]
     resources = [
-      "arn:${data.aws_partition.current.partition}:secretsmanager:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:secret:bedrock-agentcore/credentials/*"
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:workload-identity-directory/default",
+      "arn:${data.aws_partition.current.partition}:bedrock-agentcore:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:workload-identity-directory/default/workload-identity/*"
     ]
   }
 }

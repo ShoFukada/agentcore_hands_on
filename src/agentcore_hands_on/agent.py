@@ -7,6 +7,7 @@ import json
 import logging
 import sys
 
+import boto3
 from bedrock_agentcore import BedrockAgentCoreApp
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 from bedrock_agentcore.memory.integrations.strands.session_manager import (
@@ -14,9 +15,12 @@ from bedrock_agentcore.memory.integrations.strands.session_manager import (
 )
 from bedrock_agentcore.tools.browser_client import BrowserClient
 from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
+from httpx_aws_auth import AwsCredentials, AwsSigV4Auth
+from mcp.client.streamable_http import streamablehttp_client
 from playwright.sync_api import sync_playwright
 from strands import Agent, tool
 from strands.models.bedrock import BedrockModel
+from strands.tools.mcp.mcp_client import MCPClient
 
 from agentcore_hands_on.config import Settings
 
@@ -166,6 +170,118 @@ def browse_web(url: str) -> str:
         return json.dumps({"error": error_msg}, ensure_ascii=False)
 
 
+@tool
+def web_research(query: str, search_depth: str = "basic") -> str:
+    """Perform web research using Tavily search engine via AgentCore Gateway.
+
+    This tool uses a dedicated research agent to search the web for information
+    using the Tavily API through AWS Bedrock AgentCore Gateway with AWS_IAM authentication.
+    It's designed for read-only research tasks that require up-to-date information from the web.
+
+    Args:
+        query: The search query or research topic. Be specific and clear.
+        search_depth: Search depth level. Options: "basic" (faster, general results)
+                     or "advanced" (slower, more comprehensive). Default is "basic".
+
+    Returns:
+        str: Research results as a JSON string containing relevant information,
+             or an error message if the research fails.
+
+    Example:
+        web_research("latest AI developments in 2025", "basic")
+        web_research("Python best practices for async programming", "advanced")
+
+    """
+    try:
+        # Gateway設定の検証
+        if not settings.GATEWAY_URL or not settings.GATEWAY_ID:
+            error_msg = "Gateway not configured. GATEWAY_URL and GATEWAY_ID are required."
+            logger.error(error_msg)
+            return json.dumps({"error": error_msg}, ensure_ascii=False)
+
+        logger.info("Connecting to Gateway: %s", settings.GATEWAY_ID)
+
+        # Create AWS SigV4 auth with httpx-aws-auth
+        session = boto3.Session()
+        creds = session.get_credentials()
+
+        auth = AwsSigV4Auth(
+            credentials=AwsCredentials(
+                access_key=creds.access_key,
+                secret_key=creds.secret_key,
+                session_token=creds.token,
+            ),
+            region=settings.AWS_REGION,
+            service="bedrock-agentcore",
+        )
+        logger.debug("Created SigV4 auth for Gateway authentication")
+
+        # Create MCP client with SigV4 auth
+        mcp_client = MCPClient(lambda: streamablehttp_client(settings.GATEWAY_URL, auth=auth))
+
+        # withステートメントでライフサイクル管理
+        with mcp_client:
+            # MCPサーバーからツール一覧を取得
+            all_tools = mcp_client.list_tools_sync()
+            logger.info("Retrieved %d tools from Gateway", len(all_tools))
+
+            # Gateway Target Prefixでフィルタリング(Tavily関連のツールのみ)
+            if settings.GATEWAY_TARGET_PREFIX:
+                tools = [
+                    tool
+                    for tool in all_tools
+                    if hasattr(tool, "tool_name") and tool.tool_name.startswith(settings.GATEWAY_TARGET_PREFIX)
+                ]
+                logger.info(
+                    "Filtered to %d tools with prefix: %s",
+                    len(tools),
+                    settings.GATEWAY_TARGET_PREFIX,
+                )
+            else:
+                tools = all_tools
+                logger.info("Using all %d tools (no prefix filter)", len(tools))
+
+            # リサーチ専用エージェントを作成
+            research_agent = Agent(
+                model=BedrockModel(
+                    model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    region_name=settings.AWS_REGION,
+                ),
+                tools=tools,
+                system_prompt=(
+                    "You are a research specialist agent. Your role is to search the web "
+                    "for accurate, relevant information and synthesize the findings. "
+                    "Focus on providing factual, well-sourced information. "
+                    "Use the Tavily search tools available to you to find the best results."
+                ),
+            )
+
+            # リサーチエージェントにクエリを実行
+            logger.info("Starting web research: query=%s, depth=%s", query, search_depth)
+            research_prompt = (
+                f"Research the following topic and provide a comprehensive summary: {query}\n"
+                f"Search depth: {search_depth}"
+            )
+
+            response = research_agent(research_prompt)
+            response_text = str(response)
+
+            logger.info("Web research completed successfully")
+            return json.dumps(
+                {
+                    "query": query,
+                    "search_depth": search_depth,
+                    "results": response_text,
+                },
+                ensure_ascii=False,
+            )
+
+    except Exception as e:
+        error_msg = f"Web research failed: {e!s}"
+        logger.exception(error_msg)
+        return json.dumps({"error": error_msg}, ensure_ascii=False)
+
+
 def create_agent(session_id: str | None = None, actor_id: str | None = None) -> Agent:
     """Strands Agent を作成する(Memory統合対応)
 
@@ -203,7 +319,7 @@ def create_agent(session_id: str | None = None, actor_id: str | None = None) -> 
             model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
             region_name=settings.AWS_REGION,
         ),
-        tools=[execute_python, browse_web],
+        tools=[execute_python, browse_web, web_research],
         session_manager=session_manager,
     )
 

@@ -6,7 +6,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "6.18.0"
+      version = "6.19.0"
     }
   }
 
@@ -100,6 +100,7 @@ module "iam" {
   gateway_role_name    = "${var.project_name}-gateway-role"
   gateway_policy_name  = "${var.project_name}-gateway-policy"
   lambda_function_arns = []
+  gateway_secrets_arns = [module.gateway.tavily_api_key_secret_arn]
 
   tags = local.common_tags
 }
@@ -123,8 +124,10 @@ module "agent_runtime" {
     BROWSER_ID          = module.browser.browser_id
     MEMORY_ID           = module.memory.memory_id
 
-    # Gateway URL for Tavily Search (Temporarily commented out)
-    # TAVILY_GATEWAY_URL = module.gateway.gateway_url
+    # Gateway設定
+    GATEWAY_URL           = module.gateway.gateway_url
+    GATEWAY_ID            = module.gateway.gateway_id
+    GATEWAY_TARGET_PREFIX = local.gateway_target_name
   }
 
   network_mode    = "PUBLIC"
@@ -190,21 +193,20 @@ module "memory" {
 }
 
 # Gateway Module (MCP Tools Integration)
-# Temporarily commented out due to Terraform provider bug with AWS_IAM authorizer
 # See: https://github.com/hashicorp/terraform-provider-aws/issues
-# module "gateway" {
-#   source = "./modules/gateway"
-#
-#   gateway_name     = local.gateway_name
-#   gateway_role_arn = module.iam.gateway_role_arn
-#   description      = "Gateway for integrating MCP tools with ${var.agent_name}"
-#
-#   protocol_type   = "MCP"
-#   authorizer_type = "AWS_IAM"
-#
-#   # Tavily configuration
-#   tavily_api_key     = var.tavily_api_key
-#   tavily_target_name = local.gateway_target_name
-#
-#   tags = local.common_tags
-# }
+module "gateway" {
+  source = "./modules/gateway"
+
+  gateway_name     = local.gateway_name
+  gateway_role_arn = module.iam.gateway_role_arn
+  description      = "Gateway for integrating MCP tools with ${var.agent_name}"
+
+  protocol_type   = "MCP"
+  authorizer_type = "AWS_IAM"
+
+  # Tavily configuration
+  tavily_api_key     = var.tavily_api_key
+  tavily_target_name = local.gateway_target_name
+
+  tags = local.common_tags
+}

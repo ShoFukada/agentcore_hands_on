@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     DEFAULT_SESSION_ID: str = "default-session"
     DEFAULT_ACTOR_ID: str = "default-user"
 
+    # AgentCore Gateway settings
+    GATEWAY_URL: str = ""
+    GATEWAY_ID: str = ""
+    GATEWAY_TARGET_PREFIX: str = ""
+
     def __init__(self, **data: Any) -> None:  # noqa: ANN401
         super().__init__(**data)
         for field_name, field_value in self.model_dump().items():

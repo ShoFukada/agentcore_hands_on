@@ -141,36 +141,46 @@ output "summarization_strategy_id" {
   value       = module.memory.summarization_strategy_id
 }
 
-# Gateway outputs (Temporarily commented out)
-# output "gateway_id" {
-#   description = "Gateway ID"
-#   value       = module.gateway.gateway_id
-# }
+# Gateway outputs
+output "gateway_id" {
+  description = "Gateway ID"
+  value       = module.gateway.gateway_id
+}
 
-# output "gateway_arn" {
-#   description = "Gateway ARN"
-#   value       = module.gateway.gateway_arn
-# }
+output "gateway_arn" {
+  description = "Gateway ARN"
+  value       = module.gateway.gateway_arn
+}
 
-# output "gateway_url" {
-#   description = "Gateway URL endpoint"
-#   value       = module.gateway.gateway_url
-# }
+output "gateway_url" {
+  description = "Gateway URL endpoint"
+  value       = module.gateway.gateway_url
+}
 
-# output "gateway_role_arn" {
-#   description = "IAM role ARN for gateway"
-#   value       = module.iam.gateway_role_arn
-# }
+output "gateway_name" {
+  description = "Gateway name"
+  value       = module.gateway.gateway_name
+}
 
-# output "tavily_target_id" {
-#   description = "Tavily Gateway Target ID"
-#   value       = module.gateway.tavily_target_id
-# }
+output "gateway_role_arn" {
+  description = "IAM role ARN for gateway"
+  value       = module.iam.gateway_role_arn
+}
 
-# output "tavily_credential_provider_arn" {
-#   description = "Tavily API Key Credential Provider ARN"
-#   value       = module.gateway.tavily_credential_provider_arn
-# }
+output "tavily_target_id" {
+  description = "Tavily Gateway Target ID"
+  value       = module.gateway.tavily_target_id
+}
+
+output "tavily_target_name" {
+  description = "Tavily Gateway Target name"
+  value       = module.gateway.tavily_target_name
+}
+
+output "tavily_credential_provider_arn" {
+  description = "Tavily API Key Credential Provider ARN"
+  value       = module.gateway.tavily_credential_provider_arn
+}
 
 # Instructions for next steps
 output "next_steps" {
