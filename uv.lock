@@ -15,10 +15,10 @@ dependencies = [
     { name = "bedrock-agentcore" },
     { name = "boto3" },
     { name = "fastapi" },
+    { name = "httpx-aws-auth" },
     { name = "playwright" },
     { name = "pydantic-settings" },
     { name = "strands-agents", extra = ["otel"] },
-    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -36,11 +36,11 @@ requires-dist = [
     { name = "aws-opentelemetry-distro", specifier = ">=0.12.1" },
     { name = "bedrock-agentcore", specifier = ">=1.0.4" },
     { name = "boto3" },
-    { name = "fastapi", specifier = ">=0.119.1" },
+    { name = "fastapi", specifier = ">=0.120.0" },
+    { name = "httpx-aws-auth", specifier = ">=4.1.1" },
     { name = "playwright", specifier = ">=1.55.0" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "strands-agents", extras = ["otel"], specifier = ">=0.1.0" },
-    { name = "uvicorn", specifier = ">=0.38.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -51,6 +51,15 @@ dev = [
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "ruff", specifier = ">=0.13.0" },
+]
+
+[[package]]
+name = "annotated-doc"
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/a6/dc46877b911e40c00d395771ea710d5e77b6de7bacd5fdcd78d70cc5a48f/annotated_doc-0.0.3.tar.gz", hash = "sha256:e18370014c70187422c33e945053ff4c286f453a984eba84d0dbfa0c935adeda", size = 5535, upload-time = "2025-10-24T14:57:10.718Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/b7/cf592cb5de5cb3bade3357f8d2cf42bf103bbe39f459824b4939fd212911/annotated_doc-0.0.3-py3-none-any.whl", hash = "sha256:348ec6664a76f1fd3be81f43dffbee4c7e8ce931ba71ec67cc7f4ade7fbbb580", size = 5488, upload-time = "2025-10-24T14:57:09.462Z" },
 ]
 
 [[package]]
@@ -408,16 +417,17 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.119.1"
+version = "0.120.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "annotated-doc" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a6/f4/152127681182e6413e7a89684c434e19e7414ed7ac0c632999c3c6980640/fastapi-0.119.1.tar.gz", hash = "sha256:a5e3426edce3fe221af4e1992c6d79011b247e3b03cc57999d697fe76cbf8ae0", size = 338616, upload-time = "2025-10-20T11:30:27.734Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/0e/7f29e8f7219e4526747db182e1afb5a4b6abc3201768fb38d81fa2536241/fastapi-0.120.0.tar.gz", hash = "sha256:6ce2c1cfb7000ac14ffd8ddb2bc12e62d023a36c20ec3710d09d8e36fab177a0", size = 337603, upload-time = "2025-10-23T20:56:34.743Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/26/e6d959b4ac959fdb3e9c4154656fc160794db6af8e64673d52759456bf07/fastapi-0.119.1-py3-none-any.whl", hash = "sha256:0b8c2a2cce853216e150e9bd4faaed88227f8eb37de21cb200771f491586a27f", size = 108123, upload-time = "2025-10-20T11:30:26.185Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/60/7a639ceaba54aec4e1d5676498c568abc654b95762d456095b6cb529b1ca/fastapi-0.120.0-py3-none-any.whl", hash = "sha256:84009182e530c47648da2f07eb380b44b69889a4acfd9e9035ee4605c5cfc469", size = 108243, upload-time = "2025-10-23T20:56:33.281Z" },
 ]
 
 [[package]]
@@ -550,6 +560,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406, upload-time = "2024-12-06T15:37:23.222Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
+]
+
+[[package]]
+name = "httpx-aws-auth"
+version = "4.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/d6/d073ba019f4c8cc20ea07ccfc08e100d0f46c376705352df487174b9643a/httpx_aws_auth-4.1.1.tar.gz", hash = "sha256:e1e685b80af7eab0641ca7ba914ddae5af3d6ce7d1ccb2cd9b8b47bddf8dfdbc", size = 4111, upload-time = "2025-10-13T17:20:31.09Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/36/06/f29e5eb62e2ac9f9660bea7e357e9bc883920cbb440534bd5542383d208b/httpx_aws_auth-4.1.1-py3-none-any.whl", hash = "sha256:00672bf08c73c7102a769408d9bb04ca6fe7d891421cc423a91f72348f2057a3", size = 4798, upload-time = "2025-10-13T17:20:29.649Z" },
 ]
 
 [[package]]

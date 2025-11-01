@@ -157,6 +157,11 @@ output "gateway_url" {
   value       = module.gateway.gateway_url
 }
 
+output "gateway_name" {
+  description = "Gateway name"
+  value       = module.gateway.gateway_name
+}
+
 output "gateway_role_arn" {
   description = "IAM role ARN for gateway"
   value       = module.iam.gateway_role_arn
@@ -165,6 +170,11 @@ output "gateway_role_arn" {
 output "tavily_target_id" {
   description = "Tavily Gateway Target ID"
   value       = module.gateway.tavily_target_id
+}
+
+output "tavily_target_name" {
+  description = "Tavily Gateway Target name"
+  value       = module.gateway.tavily_target_name
 }
 
 output "tavily_credential_provider_arn" {
@@ -193,7 +203,6 @@ output "next_steps" {
 
     4. Add to .env file:
        MEMORY_ID=${module.memory.memory_id}
-       TAVILY_GATEWAY_URL=${module.gateway.gateway_url}
 
     AWS CLI Login command:
        aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${module.ecr.repository_url}

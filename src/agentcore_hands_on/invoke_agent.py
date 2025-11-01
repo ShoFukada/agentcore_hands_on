@@ -12,19 +12,30 @@ def main() -> None:
     parser.add_argument("--runtime-arn", required=True, help="Agent Runtime ARN")
     parser.add_argument("--prompt", required=True, help="プロンプト")
     parser.add_argument("--region", default="us-east-1", help="AWS リージョン")
+    parser.add_argument("--session-id", help="Agent Session ID (オプション、指定しない場合は自動生成)")
+    parser.add_argument("--actor-id", help="Actor ID (オプション、指定しない場合は自動生成)")
     args = parser.parse_args()
 
-    # セッションID生成(33文字以上必要)
-    session_id = f"dfmeoagmreaklgmrkleafremoigrmtesogmtrskhmtkrlshmt{uuid.uuid4().hex[:10]}"
+    # Session IDとActor ID(指定されていない場合は自動生成)
+    # Session IDはRuntime呼び出しとAgent内部で同じものを使用
+    session_id = args.session_id or f"session-{uuid.uuid4().hex}"
+    actor_id = args.actor_id or f"user-{uuid.uuid4().hex}"
 
     print(f"==> 呼び出し中: {args.prompt}")
     print(f"    Session ID: {session_id}")
+    print(f"    Actor ID: {actor_id}")
 
     # boto3 クライアント
     agent_core_client = boto3.client("bedrock-agentcore", region_name=args.region)
 
     # ペイロード
-    payload = json.dumps({"input": {"prompt": args.prompt}})
+    payload = json.dumps(
+        {
+            "prompt": args.prompt,
+            "session_id": session_id,
+            "actor_id": actor_id,
+        }
+    )
 
     # 呼び出し
     response = agent_core_client.invoke_agent_runtime(

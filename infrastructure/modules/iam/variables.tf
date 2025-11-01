@@ -113,3 +113,9 @@ variable "lambda_function_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "gateway_secrets_arns" {
+  description = "List of Secrets Manager ARNs that the gateway can access"
+  type        = list(string)
+  default     = []
+}
